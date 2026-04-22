@@ -1,0 +1,235 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Student Portal" %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .portal-wrap {
+        background: #f8f9ff;
+        border: 1px solid #d7def6;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 18px 40px rgba(30, 41, 59, 0.12);
+    }
+    .portal-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        color: #eef2ff;
+        background: linear-gradient(90deg, #2d3192, #4b3dc8 55%, #6a4cff);
+    }
+    .portal-topbar h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+    .portal-icons {
+        display: inline-flex;
+        gap: 8px;
+        font-size: 0.86rem;
+        opacity: 0.9;
+    }
+    .portal-tabs {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 12px 14px 0;
+        background: #f5f7ff;
+        border-bottom: 2px solid #4c3ed6;
+    }
+    .portal-tab {
+        border: 1px solid #c8d0ef;
+        border-bottom: none;
+        background: #ffffff;
+        color: #312e81;
+        font-weight: 800;
+        font-size: 0.95rem;
+        border-radius: 10px 10px 0 0;
+        padding: 10px 18px;
+        cursor: pointer;
+    }
+    .portal-tab.active {
+        background: linear-gradient(90deg, #5d49d6, #6b4dff);
+        color: #ffffff;
+        border-color: #4c3ed6;
+    }
+    .portal-content { padding: 18px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .panel-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    .panel-card {
+        background: #ffffff;
+        border: 1px solid #dbe2f5;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .panel-card h3 {
+        margin: 0;
+        padding: 12px 14px;
+        color: #eef2ff;
+        background: linear-gradient(90deg, #4c3ed6, #6a4cff);
+        font-size: 1.08rem;
+    }
+    .panel-body { padding: 14px; }
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e9f7;
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-label { color: #334155; font-weight: 600; }
+    .metric-value { color: #1f2454; font-size: 1.05rem; font-weight: 800; }
+
+    .classroom-grid { display: grid; gap: 10px; }
+    .class-link {
+        display: block;
+        text-decoration: none;
+        color: #1f2454;
+        border: 1px solid #d8dff5;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #f9faff;
+    }
+    .class-link:hover { border-color: #8ea2ff; }
+
+    .report-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e5e9f7;
+    }
+    .report-row:last-child { border-bottom: none; }
+    .open-btn {
+        text-decoration: none;
+        background: linear-gradient(90deg, #5d49d6, #6b4dff);
+        color: #fff;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .muted { color: #64748b; margin: 0; }
+</style>
+
+<div class="portal-wrap">
+    <header class="portal-topbar">
+        <h2>Results Portal</h2>
+        <div class="portal-icons">□ 🔔 ✉ ⚙</div>
+    </header>
+
+    <nav class="portal-tabs" role="tablist" aria-label="Portal Tabs">
+        <button class="portal-tab {% if active_tab != 'results' %}active{% endif %}" data-target="grades" type="button">My Grades</button>
+        <button class="portal-tab {% if active_tab == 'results' %}active{% endif %}" data-target="results" type="button">End of Term Results</button>
+    </nav>
+
+    <section class="portal-content">
+        <div id="panel-grades" class="tab-panel {% if active_tab != 'results' %}active{% endif %}">
+            <div class="panel-grid">
+                <article class="panel-card">
+                    <h3>Assignment Scores</h3>
+                    <div class="panel-body">
+                        {% if marks_enabled %}
+                            {% if classrooms %}
+                            <p class="muted" style="margin-bottom:10px;">Select a classroom to view your full scores table.</p>
+                            <div class="classroom-grid">
+                                {% for cls in classrooms %}
+                                <a class="class-link" href="{{ url_for('student_portal_classroom', school_id=school_id, classroom_id=cls.id) }}">
+                                    <div style="font-weight:800;">{{ cls.name }}</div>
+                                    <div style="font-size:0.82rem;color:#64748b;margin-top:3px;">Open My Grades</div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="muted">No joined classrooms found yet.</p>
+                            {% endif %}
+                        {% else %}
+                        <p class="muted">My Grades is currently hidden by your school admin.</p>
+                        {% endif %}
+                    </div>
+                </article>
+
+                <article class="panel-card">
+                    <h3>Active Cycle</h3>
+                    <div class="panel-body">
+                        <div class="metric-row"><span class="metric-label">Cycle</span><span class="metric-value">{{ cycle_meta.cycle_label if cycle_meta else '—' }}</span></div>
+                        <div class="metric-row"><span class="metric-label">Academic Year</span><span class="metric-value">{{ cycle_meta.academic_year if cycle_meta else '—' }}</span></div>
+                        <div class="metric-row"><span class="metric-label">Marks Visibility</span><span class="metric-value">{{ 'Open' if marks_enabled else 'Closed' }}</span></div>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <div id="panel-results" class="tab-panel {% if active_tab == 'results' %}active{% endif %}">
+            <div class="panel-grid">
+                <article class="panel-card">
+                    <h3>End of Term Results</h3>
+                    <div class="panel-body">
+                        {% if reports_enabled and report_docs %}
+                            {% for doc in report_docs %}
+                            <div class="report-row">
+                                <div>
+                                    <div style="font-weight:800; color:#1f2454;">{{ doc.term_label or 'Cycle' }} {{ doc.academic_year or '' }}</div>
+                                    <div style="font-size:0.82rem;color:#64748b;">Overall: {{ doc.overall_percentage or 0 }}%</div>
+                                </div>
+                                <a class="open-btn" href="{{ url_for('portal_report_view', report_id=doc.id) }}">View Full Report</a>
+                            </div>
+                            {% endfor %}
+                        {% elif not reports_enabled %}
+                        <p class="muted">End of term results are currently hidden by your school admin.</p>
+                        {% else %}
+                        <p class="muted">No term/semester reports published yet.</p>
+                        {% endif %}
+                    </div>
+                </article>
+
+                <article class="panel-card">
+                    <h3>Results Summary</h3>
+                    <div class="panel-body">
+                        <div class="metric-row"><span class="metric-label">Reports Available</span><span class="metric-value">{{ report_docs|length }}</span></div>
+                        <div class="metric-row"><span class="metric-label">Results Visibility</span><span class="metric-value">{{ 'Open' if reports_enabled else 'Closed' }}</span></div>
+                        <div class="metric-row"><span class="metric-label">Current Cycle</span><span class="metric-value">{{ cycle_meta.cycle_label if cycle_meta else '—' }}</span></div>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tabs = document.querySelectorAll('.portal-tab');
+    const panels = {
+        grades: document.getElementById('panel-grades'),
+        results: document.getElementById('panel-results')
+    };
+
+    function activate(key) {
+        tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.target === key));
+        Object.entries(panels).forEach(([k, panel]) => {
+            if (!panel) return;
+            panel.classList.toggle('active', k === key);
+        });
+    }
+
+    tabs.forEach(btn => {
+        btn.addEventListener('click', function () {
+            activate(btn.dataset.target);
+        });
+    });
+});
+</script>
+{% endblock %}

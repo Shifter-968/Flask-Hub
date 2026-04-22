@@ -1,0 +1,76 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 6 – Payment Details{% endblock %}
+
+{% block extra_head %}
+<style>
+  .bank-card { background: linear-gradient(135deg, var(--brand) 0%, #0a3d80 100%); color: #fff; border-radius: 16px; padding: 28px; margin-bottom: 22px; }
+  .bank-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 18px; opacity: 0.9; }
+  .bank-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 480px) { .bank-rows { grid-template-columns: 1fr; } }
+  .bk { background: rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 14px; }
+  .bk-lbl { font-size: 0.72rem; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .bk-val { font-size: 0.97rem; font-weight: 700; }
+  .fee-pill { display: inline-block; background: var(--accent); color: #fff; font-weight: 800; font-size: 1.3rem; padding: 8px 20px; border-radius: 10px; margin-bottom: 16px; }
+  .ref-note { background: rgba(255,255,255,0.14); border-radius: 10px; padding: 14px 16px; font-size: 0.85rem; margin-top: 14px; }
+  .ref-note strong { display: block; margin-bottom: 4px; font-size: 0.88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 6: Payment Details</h2>
+  <p class="card-sub">Confirm that you have deposited the application fee and enter the reference you used.</p>
+
+  <div class="bank-card">
+    <h4>Bank Account Details</h4>
+    <div style="margin-bottom:16px;">
+      <span class="fee-pill">Application Fee: {{ payment_details.fee }}</span>
+      <p style="font-size:0.85rem; opacity:0.85;">Non-refundable. Cash payments can also be made directly at the college office.</p>
+    </div>
+    <div class="bank-rows">
+      <div class="bk"><div class="bk-lbl">Bank</div><div class="bk-val">{{ payment_details.bank }}</div></div>
+      <div class="bk"><div class="bk-lbl">Account Name</div><div class="bk-val">{{ payment_details.account_name }}</div></div>
+      <div class="bk"><div class="bk-lbl">Account Type</div><div class="bk-val">{{ payment_details.account_type }}</div></div>
+      <div class="bk"><div class="bk-lbl">Branch Code</div><div class="bk-val">{{ payment_details.branch_code }}</div></div>
+      <div class="bk"><div class="bk-lbl">Account Number</div><div class="bk-val">{{ payment_details.account_number }}</div></div>
+      <div class="bk"><div class="bk-lbl">Swift Code</div><div class="bk-val">{{ payment_details.swift_code }}</div></div>
+    </div>
+    <div class="ref-note">
+      <strong>⚠ Payment Reference Format</strong>
+      Use: <em>{{ payment_details.reference_format }}</em><br>
+      e.g. <strong>123456789 DLAMINI SM</strong>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('apply_step6', school_id=school.id) }}">
+    <div class="form-grid two-col">
+
+      <div class="field full">
+        <label for="payment_reference">Deposit Reference Used <span class="req">*</span></label>
+        <input type="text" name="payment_reference" id="payment_reference"
+               placeholder="e.g. 123456789 DLAMINI SM"
+               value="{{ draft.payment_reference or '' }}" required>
+        <span style="font-size:0.78rem; color:var(--muted);">Enter the exact reference you wrote on the deposit slip.</span>
+      </div>
+
+      <div class="field">
+        <label for="payment_date">Date of Deposit <span class="req">*</span></label>
+        <input type="date" name="payment_date" id="payment_date"
+               value="{{ draft.payment_date or '' }}" required>
+      </div>
+
+    </div>
+
+    <div class="info-box" style="margin-top:18px;">
+      <strong>Proof of Payment</strong>
+      Remember to upload your deposit slip / proof of payment on the previous Documents step.
+      <a href="{{ url_for('apply_step5', school_id=school.id) }}" style="color:var(--brand); font-weight:600;">← Go back to upload</a>
+    </div>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_step5', school_id=school.id) }}" class="btn-back">← Back</a>
+      <button type="submit" class="btn-next">Next: Review & Submit →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

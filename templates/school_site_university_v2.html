@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ school.name }} | {{ page.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+  <style>
+    :root {
+      --ink-900: #0a0b0f;
+      --ink-800: #11131a;
+      --ink-700: #171a24;
+      --paper: #f6f3ef;
+      --soft: #d8d2c8;
+      --line: #2b3040;
+      --brand-primary: {{ school.primary_color or '#1a1c23' }};
+      --brand-accent: {{ school.accent_color or '#d4af37' }};
+      --edge: clamp(12px, 3.2vw, 40px);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: #f7f2e8;
+      background:
+        radial-gradient(1200px 700px at 110% -10%, rgba(212, 175, 55, 0.14), transparent 45%),
+        radial-gradient(1000px 600px at -10% 120%, rgba(212, 175, 55, 0.10), transparent 45%),
+        linear-gradient(180deg, #090a0d, #0f1218 40%, #11141d);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 80;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+      background: rgba(11, 13, 19, 0.84);
+      backdrop-filter: blur(8px);
+    }
+
+    .topbar-inner {
+      padding: 14px var(--edge);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 270px;
+    }
+
+    .identity img {
+      width: 68px;
+      height: 68px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      object-fit: cover;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 4px;
+    }
+
+    .identity h1 {
+      margin: 0;
+      font-size: clamp(1.1rem, 2vw, 1.6rem);
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+    }
+
+    .identity p {
+      margin: 4px 0 0;
+      color: #ece4d5;
+      font-size: 0.9rem;
+    }
+
+    .menu-toggle {
+      display: none;
+      margin-left: auto;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f3f1ed;
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .menu {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .menu a {
+      text-decoration: none;
+      color: #f3f1ed;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 999px;
+      padding: 8px 13px;
+      font-weight: 600;
+      font-size: 0.93rem;
+      transition: all 0.22s ease;
+    }
+
+    .menu a:hover,
+    .menu a.active {
+      color: #0a0a0a;
+      background: var(--brand-accent);
+      border-color: var(--brand-accent);
+      transform: translateY(-1px);
+    }
+
+    .menu a.hub-link,
+    .menu a.auth-link,
+    .menu a.apply-link {
+      color: #0a0a0a;
+      background: #f2ede3;
+      border-color: #f2ede3;
+    }
+
+    .hero {
+      min-height: calc(100vh - 96px);
+      padding: 28px var(--edge) 20px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .hero-main {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 24px;
+      background:
+        linear-gradient(120deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+        linear-gradient(150deg, #0f131d, #171b28);
+      padding: clamp(24px, 4vw, 46px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-main::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -90px auto;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,175,55,0.35), transparent 65%);
+      pointer-events: none;
+    }
+
+    .kicker {
+      display: inline-flex;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      color: #efe8d8;
+    }
+
+    .hero-main h2 {
+      margin: 16px 0 0;
+      font-size: clamp(2rem, 5.6vw, 4.3rem);
+      line-height: 0.97;
+    }
+
+    .hero-main p {
+      margin: 16px 0 0;
+      color: #f0e9db;
+      line-height: 1.8;
+      max-width: 60ch;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .cta-row a {
+      text-decoration: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-weight: 700;
+      font-size: 0.94rem;
+      border: 1px solid transparent;
+      transition: transform 0.2s ease;
+    }
+
+    .cta-row a:hover { transform: translateY(-2px); }
+
+    .cta-main { background: var(--brand-accent); color: #0a0a0a; }
+    .cta-alt { border-color: rgba(255,255,255,0.28); color: #f5f2ea; }
+
+    .hero-panel {
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.15);
+      overflow: hidden;
+      background: #121620;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      min-height: 420px;
+    }
+
+    .hero-panel img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      min-height: 300px;
+      filter: saturate(1.05) contrast(1.05);
+    }
+
+    .hero-panel-note {
+      padding: 12px 14px;
+      color: #fff6e8;
+      font-size: 0.92rem;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.35));
+    }
+
+    .stats {
+      padding: 0 var(--edge) 20px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border: 1px solid rgba(17,17,17,0.12);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(3px);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.45rem;
+      color: #111111;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      color: #222222;
+      font-size: 0.9rem;
+    }
+
+    .content {
+      margin-top: 8px;
+      padding: 0 var(--edge) 56px;
+    }
+
+    .section {
+      margin-top: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045));
+      padding: clamp(16px, 3vw, 30px);
+    }
+
+    .section h3 {
+      margin: 0 0 10px;
+      color: #111111;
+      font-size: clamp(1.2rem, 2.5vw, 2rem);
+    }
+
+    .section-body {
+      color: #151515;
+      line-height: 1.8;
+    }
+
+    .section-body p,
+    .section-body li,
+    .section-body strong,
+    .section-body span,
+    .section-body h4 {
+      color: inherit;
+    }
+
+    .section-body a {
+      color: #111111;
+    }
+
+    .grid {
+      margin-top: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .staff-grid, .gallery-grid, .media-grid, .download-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .news-grid, .events-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .testimonial-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+    .tile {
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      overflow: hidden;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tile-media { width: 100%; height: 200px; object-fit: cover; }
+    .tile-body { padding: 12px; display: grid; gap: 8px; }
+    .tile-title { margin: 0; color: #111111; font-size: 1.18rem; }
+    .tile-sub { margin: 0; color: #1f1f1f; font-weight: 700; }
+    .tile-meta { margin: 0; color: #252525; line-height: 1.65; }
+
+    .news-date {
+      width: fit-content;
+      border-radius: 999px;
+      padding: 5px 9px;
+      border: 1px solid rgba(17,17,17,0.16);
+      color: #111111;
+      font-size: 0.8rem;
+    }
+
+    .download-link {
+      border-radius: 12px;
+      border: 1px solid rgba(17,17,17,0.12);
+      color: #111111;
+      text-decoration: none;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.94);
+    }
+
+    .contact-wrap {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .contact-card, .map-card {
+      border: 1px solid rgba(17,17,17,0.12);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 14px;
+      color: #111111;
+    }
+
+    .map-card iframe { width: 100%; min-height: 280px; border: 0; border-radius: 10px; }
+
+    .funnel {
+      margin-top: 22px;
+      border-radius: 18px;
+      border: 1px solid rgba(17,17,17,0.12);
+      padding: 18px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(247,243,236,0.98));
+      color: #111111;
+    }
+
+    .funnel-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .funnel-card {
+      border-radius: 12px;
+      border: 1px solid rgba(17,17,17,0.12);
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #111111;
+    }
+
+    .funnel p,
+    .funnel h3,
+    .funnel h4,
+    .funnel-card p,
+    .funnel-card h4 {
+      color: inherit;
+    }
+
+    .footer {
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding: 24px var(--edge);
+      color: #f0e7d8;
+      background: #090b10;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .footer h4 { margin: 0 0 10px; color: #fff2d1; }
+    .footer a { color: #fff1cf; text-decoration: none; line-height: 1.8; }
+
+    @media (max-width: 1080px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .stats { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .contact-wrap { grid-template-columns: 1fr; }
+      .topbar-inner { grid-template-columns: 1fr; gap: 12px; }
+      .menu-toggle { display: inline-flex; width: fit-content; }
+      .menu {
+        justify-content: flex-start;
+        display: none;
+        width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 12px;
+        padding: 10px;
+        background: rgba(10, 12, 18, 0.72);
+      }
+      .menu.is-open { display: flex; }
+      .menu a { width: 100%; }
+    }
+
+    @media (max-width: 760px) {
+      .stats, .footer-grid { grid-template-columns: 1fr; }
+      .identity img { width: 56px; height: 56px; }
+    }
+  </style>
+  {% if school.custom_css %}<style>{{ school.custom_css|safe }}</style>{% endif %}
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="identity">
+        <img src="{{ school.logo_url or school.logo }}" alt="{{ school.name }} logo" onerror="this.style.display='none'">
+        <div>
+          <h1>{{ school.name }}</h1>
+          <p>{{ school.tagline or school.motto or school.location }}</p>
+        </div>
+      </div>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="school-site-menu-v2">Menu</button>
+      <nav class="menu" id="school-site-menu-v2">
+        <a href="{{ url_for('home') }}" class="hub-link">Back to Smart School Hub</a>
+        <a href="{{ url_for('register', school_id=school.id) }}" class="auth-link">Create Account</a>
+        <a href="{{ url_for('login', school_id=school.id) }}" class="auth-link">Login</a>
+        {% for item in menu_items %}
+          {% set label_lower = (item.label or '')|lower %}
+          {% if item.is_external and item.external_url %}
+            <a href="{{ item.external_url }}" target="_blank" rel="noopener" class="{% if 'apply' in label_lower %}apply-link{% endif %}">{{ item.label }}</a>
+          {% else %}
+            <a href="{{ url_for('school_page', school_id=school.id, page_slug=item.slug) }}" class="{% if item.slug == page.slug %}active{% endif %} {% if 'apply' in label_lower %}apply-link{% endif %}">{{ item.label }}</a>
+          {% endif %}
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <article class="hero-main">
+      <span class="kicker">{{ school.motto or 'Global Education Hub' }}</span>
+      <h2>{{ page.title }}</h2>
+      <p>{{ page.meta_description or school.tagline or 'A premium university experience crafted for future leaders, innovators, and creators.' }}</p>
+      <div class="cta-row">
+        {% if application_enabled %}
+        <a href="{{ url_for('apply_instructions', school_id=school.id) }}" class="cta-main">Apply Now</a>
+        {% else %}
+        <span class="cta-main" style="opacity:.62;cursor:not-allowed;pointer-events:none;">Apply Now (Coming Soon)</span>
+        {% endif %}
+        <a href="{{ url_for('school_page', school_id=school.id, page_slug='admissions') }}" class="cta-alt">Admission Guide</a>
+        <a href="{{ url_for('school_page', school_id=school.id, page_slug='contact') }}" class="cta-alt">Book Campus Tour</a>
+      </div>
+    </article>
+    <aside class="hero-panel">
+      <img src="{{ page.hero_image_url or school.hero_image_url }}" alt="{{ page.title }} hero">
+      <div class="hero-panel-note">Creative excellence, advanced technology, and a global learning network in one campus ecosystem.</div>
+    </aside>
+  </section>
+
+  {% if school.school_type == 'tertiary' %}
+    {% set metrics = [('120+', 'Industry Partners'),('85+', 'Countries Represented'),('30K+', 'Global Alumni'),('92%', 'Graduate Employability')] %}
+  {% else %}
+    {% set metrics = [('40+', 'Learning Programs'),('15K+', 'Alumni Network'),('300+', 'Faculty & Staff'),('95%', 'Student Satisfaction')] %}
+  {% endif %}
+
+  <section class="stats">
+    {% for metric in metrics %}
+    <article class="stat">
+      <strong>{{ metric[0] }}</strong>
+      <span>{{ metric[1] }}</span>
+    </article>
+    {% endfor %}
+  </section>
+
+  <main class="content">
+    {% for section in sections %}
+      <section class="section section-{{ section.section_type }}" id="section-{{ section.id }}">
+        {% if section.heading %}<h3>{{ section.heading }}</h3>{% endif %}
+        {% if section.body_html %}<div class="section-body">{{ section.body_html|safe }}</div>{% endif %}
+
+        {% if section.section_type == 'staff_grid' and staff %}
+        <div class="grid staff-grid">{% for member in staff %}<article class="tile">{% if member.photo_url %}<img class="tile-media" src="{{ member.photo_url }}" alt="{{ member.full_name }}">{% endif %}<div class="tile-body"><h4 class="tile-title">{{ member.full_name }}</h4><p class="tile-sub">{{ member.role }}</p>{% if member.department %}<p class="tile-meta">{{ member.department }}</p>{% endif %}</div></article>{% endfor %}</div>
+        {% endif %}
+
+        {% if section.section_type == 'gallery_grid' and albums %}
+        <div class="grid gallery-grid">{% for album in albums %}<article class="tile">{% if album.cover_image_url %}<img class="tile-media" src="{{ album.cover_image_url }}" alt="{{ album.title }}">{% endif %}<div class="tile-body"><h4 class="tile-title">{{ album.title }}</h4><p class="tile-meta">{{ album.description }}</p></div></article>{% endfor %}</div>
+        {% endif %}
+
+        {% if section.section_type == 'news_feed' and news_items %}
+        <div class="grid news-grid">{% for item in news_items %}<article class="tile">{% if item.cover_image_url %}<img class="tile-media" src="{{ item.cover_image_url }}" alt="{{ item.title }}">{% endif %}<div class="tile-body">{% if item.published_at %}<span class="news-date">{{ item.published_at }}</span>{% endif %}<h4 class="tile-title">{{ item.title }}</h4><p class="tile-meta">{{ item.excerpt }}</p>{% if item.category %}<p class="tile-sub">#{{ item.category|title }}</p>{% endif %}<p><a class="download-link" href="{{ url_for('school_news_detail', school_id=school.id, news_slug=item.slug) }}">View job description</a></p></div></article>{% endfor %}</div>
+        {% endif %}
+
+        {% if section.section_type == 'events_list' and events %}
+        <div class="grid events-grid">{% for event in events %}<article class="tile"><div class="tile-body"><span class="news-date">{{ event.event_date }}</span><h4 class="tile-title">{{ event.title }}</h4><p class="tile-meta">{{ event.description }}</p>{% if event.venue %}<p class="tile-sub">{{ event.venue }}</p>{% endif %}</div></article>{% endfor %}</div>
+        {% endif %}
+
+        {% if section.section_type == 'testimonial_carousel' and testimonials %}
+        <div class="grid testimonial-grid">{% for t in testimonials %}<article class="tile"><div class="tile-body"><h4 class="tile-title">{{ t.author_name }}</h4><p class="tile-sub">{{ t.author_role }}</p><p class="tile-meta">"{{ t.quote }}"</p></div></article>{% endfor %}</div>
+        {% endif %}
+
+        {% if section.section_type == 'download_list' and downloads %}
+        <div class="grid download-grid">{% for d in downloads %}<a class="download-link" href="{{ d.file_url }}" target="_blank" rel="noopener"><span><strong>{{ d.label }}</strong><br><small>{{ d.description or 'Download resource' }}</small></span><span>Download</span></a>{% endfor %}</div>
+        {% endif %}
+
+        {% if section.section_type == 'contact_map' %}
+        <div class="contact-wrap">
+          <article class="contact-card">
+            <h4 class="tile-title">School Information</h4>
+            <p><strong>Address:</strong><br>{{ contact_info.address_line1 if contact_info else school.location }}{% if contact_info and contact_info.city %}<br>{{ contact_info.city }} {{ contact_info.postal_code or '' }}, {{ contact_info.country or '' }}{% endif %}</p>
+            <p><strong>Phone:</strong> {{ (contact_info.phone_primary if contact_info else school.contact_number) or 'N/A' }}</p>
+            {% if contact_info and contact_info.phone_secondary %}<p><strong>Alt Phone:</strong> {{ contact_info.phone_secondary }}</p>{% endif %}
+            <p><strong>Email:</strong> {{ (contact_info.email_primary if contact_info else school.contact_email) or 'N/A' }}</p>
+            <hr>
+            <h4 style="margin-top:0.8rem;">Send a message</h4>
+            <form method="post" action="{{ url_for('submit_school_contact_message', school_id=school.id) }}" style="display:grid;gap:8px;">
+              <input type="text" name="name" placeholder="Your full name" required style="padding:10px;border:1px solid #d7deef;border-radius:10px;">
+              <input type="email" name="email" placeholder="Your email" required style="padding:10px;border:1px solid #d7deef;border-radius:10px;">
+              <input type="text" name="phone" placeholder="Phone (optional)" style="padding:10px;border:1px solid #d7deef;border-radius:10px;">
+              <textarea name="message" placeholder="Write your message" required style="padding:10px;border:1px solid #d7deef;border-radius:10px;min-height:90px;"></textarea>
+              <button type="submit" style="border:none;background:#111111;color:#fff;font-weight:700;padding:10px 14px;border-radius:10px;">Send Message</button>
+            </form>
+          </article>
+          <article class="map-card">
+            {% if contact_info and contact_info.maps_embed_url %}
+              <iframe src="{{ contact_info.maps_embed_url }}" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+            {% else %}
+              <p class="tile-meta">Map link not configured yet.</p>
+            {% endif %}
+          </article>
+        </div>
+        {% endif %}
+      </section>
+    {% endfor %}
+
+    {% if page_media %}
+    <section class="section">
+      <h3>Media Highlights</h3>
+      <div class="grid media-grid">{% for media in page_media %}<article class="tile">{% if media.media_type == 'image' and media.file_url %}<img class="tile-media" src="{{ media.file_url }}" alt="{{ media.alt_text or media.caption or 'media' }}">{% elif media.media_type == 'video_upload' and media.file_url %}<video class="tile-media" src="{{ media.file_url }}" controls></video>{% endif %}<div class="tile-body"><p class="tile-meta">{{ media.caption or media.file_name or media.media_type }}</p></div></article>{% endfor %}</div>
+    </section>
+    {% endif %}
+
+    <section class="funnel" id="funnel">
+      <h3 style="margin:0; color:#111111;">Admission Funnel</h3>
+      <p style="margin:8px 0 0; color:#222222;">Three clear routes for applicants, from interest to enrollment.</p>
+      <div class="funnel-grid">
+        <article class="funnel-card"><h4>Apply Online</h4><p>Submit your application and supporting documents for initial review.</p><p style="margin-top:12px;">{% if application_enabled %}<a href="{{ url_for('apply_instructions', school_id=school.id) }}" style="display:inline-block; background:#111111; color:#fff; font-size:0.82rem; font-weight:700; padding:9px 20px; border-radius:8px; text-decoration:none;">Start Application →</a>{% else %}<span style="display:inline-block; background:#6b7280; color:#fff; font-size:0.82rem; font-weight:700; padding:9px 20px; border-radius:8px; opacity:.72; cursor:not-allowed;">Application Coming Soon</span>{% endif %}</p></article>
+        <article class="funnel-card"><h4>Download Prospectus</h4><p>Explore programmes, fees, scholarship options, and pathways.</p></article>
+        <article class="funnel-card"><h4>International Admissions</h4><p>Receive visa guidance, housing support, and orientation help.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <section>
+        <h4>{{ school.name }}</h4>
+        <p>{{ school.motto or 'Future-focused education for impact.' }}</p>
+      </section>
+      <section>
+        <h4>Navigate</h4>
+        {% for item in menu_items if not item.is_external %}<div><a href="{{ url_for('school_page', school_id=school.id, page_slug=item.slug) }}">{{ item.label }}</a></div>{% endfor %}
+      </section>
+      <section>
+        <h4>Contact</h4>
+        <div>{{ contact_info.address_line1 if contact_info else school.location }}</div>
+        <div>{{ (contact_info.phone_primary if contact_info else school.contact_number) or 'N/A' }}</div>
+        <div>{{ (contact_info.email_primary if contact_info else school.contact_email) or 'N/A' }}</div>
+      </section>
+      <section>
+        <h4>Connect</h4>
+        {% for link in social_links %}<div><a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.platform|title }}</a></div>{% else %}<div>Social links coming soon</div>{% endfor %}
+      </section>
+    </div>
+    <div style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.14); padding-top:10px;">&copy; 2026 {{ school.name }}. Premium academic experience.</div>
+  </footer>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      var toggle = document.querySelector('.menu-toggle');
+      var menu = document.getElementById('school-site-menu-v2');
+      if (!toggle || !menu) {
+        return;
+      }
+
+      toggle.addEventListener('click', function () {
+        var isOpen = menu.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
+      menu.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth <= 1080) {
+            menu.classList.remove('is-open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      });
+
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 1080) {
+          menu.classList.remove('is-open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

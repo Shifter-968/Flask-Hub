@@ -1,0 +1,90 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Manage Modules{% endblock %}
+{% block header %}Manage Modules{% endblock %}
+
+{% block content %}
+  <h2>Manage Modules</h2>
+  <form method="post" action="{{ url_for('admin_modules') }}">
+      <label>School:</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}">{{ school.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Module Name:</label>
+      <input type="text" name="name" required>
+
+      <label>Module Code:</label>
+      <input type="text" name="module_code" required>
+
+      <label>Description:</label><br>
+      <textarea name="description"></textarea>
+      <br>
+      <label>Credits:</label>
+      <input type="number" name="credits" min="0">
+
+      <label>Faculty:</label>
+      <input type="text" name="faculty">
+
+      <button type="submit">Add Module</button>
+  </form>
+
+  <h3>Existing Modules</h3>
+  <table>
+    <tr>
+      <th>ID</th><th>School</th><th>Name</th><th>Code</th><th>Description</th><th>Credits</th><th>Faculty</th><th>Created At</th><th>Actions</th>
+    </tr>
+    {% for module in modules %}
+      <tr>
+        <td>{{ module.id }}</td>
+        <td>{{ module.school_id }}</td>
+        <td>{{ module.name }}</td>
+        <td>{{ module.module_code }}</td>
+        <td>{{ module.description }}</td>
+        <td>{{ module.credits }}</td>
+        <td>{{ module.faculty }}</td>
+        <td>{{ module.created_at }}</td>
+        <td class="actions">
+          <a href="#edit-module-{{ module.id }}">Edit</a>
+          <a href="{{ url_for('delete_module', module_id=module.id) }}">Delete</a>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="9">No modules found.</td></tr>
+    {% endfor %}
+  </table>
+
+  <!-- Inline Edit Forms -->
+  {% for module in modules %}
+  <form id="edit-module-{{ module.id }}" method="POST" action="{{ url_for('edit_module', module_id=module.id) }}">
+      <h3>Edit Module: {{ module.name }}</h3>
+      <label>School:</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}" {% if school.id == module.school_id %}selected{% endif %}>{{ school.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Module Name:</label>
+      <input type="text" name="name" value="{{ module.name }}" required>
+
+      <label>Module Code:</label>
+      <input type="text" name="module_code" value="{{ module.module_code }}" required>
+
+      <label>Description:</label>
+      <textarea name="description">{{ module.description }}</textarea>
+
+      <label>Credits:</label>
+      <input type="number" name="credits" value="{{ module.credits }}">
+
+      <label>Faculty:</label>
+      <input type="text" name="faculty" value="{{ module.faculty }}">
+
+      <button type="submit">Update Module</button>
+  </form>
+  {% endfor %}
+{% endblock %}

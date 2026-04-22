@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Admin Registration | Smart School Hub</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+    :root {
+      --bg-a: #0d1122;
+      --bg-b: #141b34;
+      --glass: rgba(13, 20, 39, 0.8);
+      --line: rgba(255, 255, 255, 0.2);
+      --text: #f0f5ff;
+      --muted: #bcc8e3;
+      --accent-1: #67e8c7;
+      --accent-2: #89b4ff;
+      --focus: #67e8c7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 420px at 5% 0%, rgba(103, 232, 199, 0.18), transparent 60%),
+        radial-gradient(1000px 520px at 100% 100%, rgba(137, 180, 255, 0.22), transparent 55%),
+        linear-gradient(155deg, var(--bg-a), var(--bg-b));
+    }
+    .scene { min-height: 100vh; padding: clamp(12px,2vw,28px); display: grid; place-items: center; }
+    .modal-wrap {
+      width: min(560px, 96vw);
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      box-shadow: 0 30px 70px rgba(2, 7, 17, 0.55);
+      padding: clamp(16px, 3vw, 26px);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .modal-wrap::before,
+    .modal-wrap::after {
+      content: "";
+      position: absolute;
+      top: 14px;
+      bottom: 14px;
+      width: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(180deg, rgba(103, 232, 199, 0.22), rgba(137, 180, 255, 0.08));
+      z-index: -1;
+    }
+    .modal-wrap::before { left: -9px; }
+    .modal-wrap::after { right: -9px; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
+    .head h2 { margin: 0; font-size: clamp(1.35rem, 3.5vw, 2rem); }
+    .close-link {
+      text-decoration: none;
+      color: var(--muted);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 0.9rem;
+    }
+    .sub { margin: 0 0 12px; color: var(--muted); line-height: 1.6; }
+    .flash {
+      border: 1px solid rgba(255, 164, 164, 0.45);
+      background: rgba(255, 164, 164, 0.12);
+      color: #ffdcdc;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 0.93rem;
+    }
+    form { display: grid; gap: 10px; }
+    label { font-size: 0.9rem; color: #dbe4f9; }
+    input {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 11px 12px;
+      outline: none;
+    }
+    input:focus { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(103, 232, 199, 0.16); }
+    .btn {
+      margin-top: 4px;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 700;
+      color: #0b1d26;
+      background: linear-gradient(130deg, var(--accent-1), var(--accent-2));
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main class="scene">
+    <section class="modal-wrap" aria-modal="true" role="dialog" aria-labelledby="school-admin-register-title">
+      <div class="head">
+        <h2 id="school-admin-register-title">School Admin Registration</h2>
+        <a class="close-link" href="{{ url_for('school_page', school_id=school_id, page_slug='home') if school_id else url_for('home') }}">Close</a>
+      </div>
+      <p class="sub">Create the privileged school administrator account for this school.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}{% endif %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('register_school_admin') }}">
+        <input type="hidden" name="user_id" value="{{ user_id }}">
+        <input type="hidden" name="school_id" value="{{ school_id }}">
+
+        <label for="name">Full Name</label>
+        <input id="name" type="text" name="name" required>
+
+        <label for="phone_number">Phone Number</label>
+        <input id="phone_number" type="text" name="phone_number">
+
+        <button class="btn" type="submit">Register School Admin</button>
+      </form>
+    </section>
+  </main>
+<script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>
+
+
+

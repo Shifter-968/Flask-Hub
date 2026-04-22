@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ school.name }} | {% block page_title %}Online Application{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand:   {{ school.primary_color or '#0B4EA2' }};
+      --accent:  {{ school.accent_color  or '#F58220' }};
+      --ink:     #162033;
+      --muted:   #5e6a80;
+      --line:    #e2e8f0;
+      --paper:   #f4f7fb;
+      --white:   #ffffff;
+      --radius:  16px;
+      --edge:    clamp(16px, 4vw, 40px);
+      --shadow:  0 4px 24px rgba(22,32,51,0.10);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Poppins","Segoe UI",sans-serif; color: var(--ink); background: var(--paper); min-height: 100vh; }
+
+    /* ── TOPBAR ── */
+    .topbar { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.96); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 14px var(--edge); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .identity { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+    .identity img { width: 50px; height: 50px; object-fit: contain; border-radius: 12px; border: 1px solid var(--line); background: #fff; padding: 4px; }
+    .identity h1 { font-size: clamp(0.95rem,2vw,1.1rem); font-weight: 700; line-height: 1.1; color: var(--brand); }
+    .identity span { font-size: 0.78rem; color: var(--muted); }
+    .topbar-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .topbar-nav a { text-decoration: none; font-size: 0.82rem; font-weight: 500; color: var(--muted); padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); transition: all 0.2s; }
+    .topbar-nav a:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+    /* ── STEP PROGRESS ── */
+    .progress-wrap { background: var(--white); border-bottom: 1px solid var(--line); padding: 22px var(--edge); }
+    .progress-inner { max-width: 900px; margin: 0 auto; }
+    .step-bar { display: flex; align-items: flex-start; justify-content: space-between; position: relative; }
+    .step-bar::before { content: ''; position: absolute; top: 17px; left: 0; right: 0; height: 2px; background: var(--line); z-index: 0; }
+    .step-item { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 6px; position: relative; z-index: 1; }
+    .step-dot { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; background: var(--paper); border: 2px solid var(--line); color: var(--muted); transition: all 0.3s; }
+    .step-item.done   .step-dot { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .step-item.active .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 4px rgba(245,130,32,0.2); }
+    .step-label { font-size: 0.68rem; color: var(--muted); text-align: center; line-height: 1.2; max-width: 76px; }
+    .step-item.active .step-label { color: var(--accent); font-weight: 600; }
+    .step-item.done   .step-label { color: var(--brand); }
+    @media (max-width: 600px) { .step-label { display: none; } }
+
+    /* ── LAYOUT ── */
+    .page-main { max-width: 760px; margin: 0 auto; padding: 36px var(--edge) 60px; }
+    .page-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: clamp(22px,4vw,42px); margin-bottom: 20px; }
+    .page-card h2 { font-size: clamp(1.15rem,2.5vw,1.5rem); font-weight: 700; color: var(--brand); border-left: 4px solid var(--accent); padding-left: 14px; margin-bottom: 4px; }
+    .card-sub { font-size: 0.88rem; color: var(--muted); margin-bottom: 26px; padding-left: 18px; }
+
+    /* ── FORM ── */
+    .form-grid { display: grid; gap: 18px; }
+    .form-grid.two-col { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 580px) { .form-grid.two-col { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+    label .req { color: #e53e3e; }
+    input, select, textarea { font-family: inherit; font-size: 0.92rem; border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 14px; color: var(--ink); background: #fafbfd; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(11,78,162,0.10); background: #fff; }
+    textarea { resize: vertical; min-height: 90px; }
+    select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%235e6a80' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+    .radio-group { display: flex; gap: 14px; flex-wrap: wrap; }
+    .radio-opt { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+    .radio-opt input[type=radio] { width: 18px; height: 18px; accent-color: var(--brand); }
+
+    /* ── NAVIGATION BUTTONS ── */
+    .form-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+    .btn-back { text-decoration: none; font-size: 0.9rem; font-weight: 600; color: var(--muted); padding: 12px 24px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; transition: all 0.2s; }
+    .btn-back:hover { background: var(--paper); color: var(--ink); }
+    .btn-next { font-size: 0.92rem; font-weight: 700; background: var(--brand); color: #fff; border: none; border-radius: 10px; padding: 13px 36px; cursor: pointer; transition: background 0.2s, transform 0.1s; letter-spacing: 0.02em; }
+    .btn-next:hover { background: #0a3d80; transform: translateY(-1px); }
+    .btn-accent { background: var(--accent) !important; }
+    .btn-accent:hover { background: #d46a0a !important; }
+    .btn-green { background: #16a34a !important; }
+    .btn-green:hover { background: #15803d !important; }
+
+    /* ── FLASH MESSAGES ── */
+    .flash-list { list-style: none; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+    .flash-error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 10px; padding: 11px 16px; font-size: 0.87rem; }
+    .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 10px; padding: 11px 16px; font-size: 0.87rem; }
+    .flash-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 10px; padding: 11px 16px; font-size: 0.87rem; }
+
+    /* ── UTILITY BOXES ── */
+    .info-box  { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px 18px; font-size: 0.87rem; color: #1e40af; }
+    .info-box strong { display: block; margin-bottom: 4px; color: var(--brand); }
+    .warn-box  { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px 18px; font-size: 0.87rem; color: #9a3412; }
+    .warn-box strong { display: block; margin-bottom: 4px; }
+    .success-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px 18px; font-size: 0.87rem; color: #166534; }
+    .success-box strong { display: block; margin-bottom: 4px; }
+
+    /* ── REVIEW TABLE ── */
+    .review-section { margin-bottom: 24px; }
+    .review-section h4 { font-size: 0.92rem; font-weight: 700; color: var(--brand); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
+    .review-row { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.88rem; }
+    .review-label { min-width: 180px; color: var(--muted); font-weight: 500; flex-shrink: 0; }
+    .review-value { color: var(--ink); font-weight: 600; }
+    .review-edit  { font-size: 0.78rem; color: var(--brand); text-decoration: none; margin-left: auto; }
+    .review-edit:hover { text-decoration: underline; }
+
+    /* ── FOOTER ── */
+    .site-footer { text-align: center; padding: 24px var(--edge); border-top: 1px solid var(--line); color: var(--muted); font-size: 0.82rem; }
+    .site-footer a { color: var(--brand); text-decoration: none; }
+    .site-footer a:hover { text-decoration: underline; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="{{ url_for('school_page', school_id=school.id, page_slug='home') }}" class="identity">
+      {% if school.logo %}<img src="{{ school.logo }}" alt="{{ school.name }}">{% endif %}
+      <div>
+        <h1>{{ school.name }}</h1>
+        <span>Online Application Portal</span>
+      </div>
+    </a>
+    <div class="topbar-nav">
+      <a href="{{ url_for('school_page', school_id=school.id, page_slug='home') }}">← Back to Website</a>
+      <a href="{{ url_for('apply_instructions', school_id=school.id) }}">Instructions</a>
+    </div>
+  </div>
+</nav>
+
+{% if step is defined and step_labels is defined %}
+<div class="progress-wrap">
+  <div class="progress-inner">
+    <div class="step-bar">
+      {% for label in step_labels %}
+      {% set n = loop.index %}
+      <div class="step-item {% if n < step %}done{% elif n == step %}active{% endif %}">
+        <div class="step-dot">{% if n < step %}✓{% else %}{{ n }}{% endif %}</div>
+        <span class="step-label">{{ label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<main class="page-main">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <ul class="flash-list">
+      {% for category, msg in messages %}
+      <li class="flash-{{ category }}">{{ msg }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <p>{{ school.name }} &mdash; Online Application Portal &bull; <a href="{{ url_for('school_page', school_id=school.id, page_slug='contact') }}">Contact Us</a></p>
+</footer>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

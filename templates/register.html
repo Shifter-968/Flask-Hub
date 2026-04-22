@@ -1,0 +1,21 @@
+<form method="POST" action="/register">
+  <!-- Common Fields (Users table) -->
+  <input type="text" name="username" placeholder="Enter your username (e.g. johndoe2026)" required>
+  <input type="email" name="email" placeholder="Enter your email address (e.g. name@example.com)" required>
+  <input id="password" type="password" name="password" placeholder="Enter a secure password" minlength="8" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$" title="Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and special character." required>
+
+  <!-- Role Selection -->
+  <select id="role" name="role" onchange="showRoleForm()" required>
+    <option value="">Select Role</option>
+    <option value="teacher">Teacher</option>
+    <option value="lecturer">Lecturer</option>
+    <option value="student">Student</option>
+    <option value="learner">Learner</option>
+    <option value="parent">Parent</option>
+    <option value="staff">Staff</option>
+  </select>
+
+  <button type="submit">Register</button>
+</form>
+
+<script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>

@@ -1,0 +1,75 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Manage Schools{% endblock %}
+{% block header %}Manage Schools{% endblock %}
+
+{% block content %}
+    <h2>Manage Schools</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Type</th><th>Location</th>
+                <th>Logo</th><th>Contact Number</th><th>Contact Email</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for school in schools %}
+            <tr>
+                <td>{{ school.id }}</td>
+                <td>{{ school.name }}</td>
+                <td>{{ school.school_type }}</td>
+                <td>{{ school.location }}</td>
+                <td>
+                    {% if school.logo %}
+                        <img src="{{ school.logo }}" alt="{{ school.name }} logo" width="40">
+                    {% endif %}
+                </td>
+                <td>{{ school.contact_number }}</td>
+                <td>{{ school.contact_email }}</td>
+                <td class="actions">
+                    <a href="#edit-school-{{ school.id }}">Edit</a>
+                    <a href="{{ url_for('delete_school', school_id=school.id) }}">Delete</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8">No schools found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+        
+    <!-- Add School Form -->
+    <form method="POST" action="{{ url_for('add_school') }}">
+        <h3>Add New School</h3>
+        <input type="text" name="name" placeholder="School Name" required>
+        <select name="school_type" required>
+            <option value="pre_school">Pre-School</option>
+            <option value="primary_school">Primary School</option>
+            <option value="high_school">High School</option>
+            <option value="tertiary">Tertiary</option>
+        </select>
+        <input type="text" name="location" placeholder="Location" required>
+        <input type="text" name="logo" placeholder="Logo URL">
+        <input type="text" name="contact_number" placeholder="Contact Number">
+        <input type="email" name="contact_email" placeholder="Contact Email">
+        <button type="submit">Add School</button>
+    </form>
+
+    <!-- Inline Edit Forms -->
+    {% for school in schools %}
+    <form id="edit-school-{{ school.id }}" method="POST" action="{{ url_for('edit_school', school_id=school.id) }}">
+        <h3>Edit School: {{ school.name }}</h3>
+        <input type="text" name="name" value="{{ school.name }}" required>
+        <select name="school_type" required>
+            <option value="pre_school" {% if school.school_type == 'pre_school' %}selected{% endif %}>Pre-School</option>
+            <option value="primary_school" {% if school.school_type == 'primary_school' %}selected{% endif %}>Primary School</option>
+            <option value="high_school" {% if school.school_type == 'high_school' %}selected{% endif %}>High School</option>
+            <option value="tertiary" {% if school.school_type == 'tertiary' %}selected{% endif %}>Tertiary</option>
+        </select>
+        <input type="text" name="location" value="{{ school.location }}" required>
+        <input type="text" name="logo" value="{{ school.logo }}">
+        <input type="text" name="contact_number" value="{{ school.contact_number }}">
+        <input type="email" name="contact_email" value="{{ school.contact_email }}">
+        <button type="submit">Update School</button>
+    </form>
+    {% endfor %}
+{% endblock %}

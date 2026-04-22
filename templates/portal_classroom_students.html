@@ -1,0 +1,296 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Students – " ~ (classroom.name if classroom else "Classroom") %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .breadcrumb {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 0.86rem; color: #94a3b8; margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a { color: #3b82f6; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .page-title { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+    .page-sub { color: #64748b; margin: 0 0 28px; }
+
+    .students-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+    }
+    .student-card {
+        background: white;
+        border-radius: 16px;
+        padding: 18px 20px;
+        box-shadow: 0 3px 16px rgba(30,41,59,0.07);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: box-shadow 0.2s ease;
+    }
+    .student-card:hover { box-shadow: 0 6px 24px rgba(30,41,59,0.11); }
+    .student-avatar {
+        width: 48px; height: 48px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .student-info { flex: 1; min-width: 0; }
+    .student-name { font-weight: 700; color: #1e293b; font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .student-badge {
+        display: inline-block; padding: 2px 9px;
+        border-radius: 99px; font-size: 0.73rem; font-weight: 600; margin-top: 4px;
+        background: #eff6ff; color: #3b82f6;
+    }
+    .student-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+    .btn-record {
+        padding: 7px 16px; border-radius: 9px;
+        background: #4f46e5; color: white;
+        font-size: 0.82rem; font-weight: 600;
+        border: none; cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.2s;
+    }
+    .btn-record:hover { background: #4338ca; }
+    .btn-view-table {
+        padding: 7px 16px; border-radius: 9px;
+        background: #f1f5f9; color: #475569;
+        font-size: 0.82rem; font-weight: 600;
+        text-decoration: none;
+        text-align: center;
+        white-space: nowrap;
+        transition: background 0.2s;
+    }
+    .btn-view-table:hover { background: #e2e8f0; color: #1e293b; }
+
+    /* Modal */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(15,23,42,0.6);
+        backdrop-filter: blur(5px);
+        z-index: 8000;
+        align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 22px;
+        padding: 34px 30px 28px;
+        width: min(520px, 95vw);
+        box-shadow: 0 28px 75px rgba(15,23,42,0.22);
+        position: relative;
+        max-height: 92vh; overflow-y: auto;
+    }
+    .modal-close {
+        position: absolute; top: 16px; right: 16px;
+        background: #f1f5f9; border: none; border-radius: 50%;
+        width: 34px; height: 34px; cursor: pointer; font-size: 1.1rem;
+        display: flex; align-items: center; justify-content: center;
+        color: #64748b; transition: background 0.2s;
+    }
+    .modal-close:hover { background: #e2e8f0; }
+    .modal-title { font-size: 1.2rem; font-weight: 700; color: #1e293b; margin: 0 0 22px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-group label { font-weight: 600; font-size: 0.83rem; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input, .form-group select, .form-group textarea {
+        padding: 9px 12px; border-radius: 9px; border: 1.5px solid #e2e8f0;
+        font-size: 0.9rem; color: #1e293b; background: #f8fafc;
+        transition: border-color 0.2s, background 0.2s;
+        font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none; border-color: #4f46e5; background: white;
+    }
+    .form-group textarea { resize: vertical; min-height: 76px; }
+    .hint-text { font-size: 0.76rem; color: #94a3b8; margin-top: 3px; }
+    .btn-submit-modal {
+        width: 100%; padding: 13px; border-radius: 11px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: white; font-weight: 700; font-size: 0.95rem;
+        border: none; cursor: pointer; margin-top: 6px;
+        transition: opacity 0.2s;
+        font-family: inherit;
+    }
+    .btn-submit-modal:hover { opacity: 0.87; }
+
+    .no-data-state {
+        text-align: center; padding: 60px 20px; color: #94a3b8;
+        background: white; border-radius: 18px; border: 1px dashed #e2e8f0;
+    }
+</style>
+
+<div class="breadcrumb">
+    <a href="{{ url_for('portal_dashboard', school_id=school_id) }}">📊 Portal</a>
+    <span>›</span>
+    <a href="{{ url_for('portal_assignments', school_id=school_id) }}">Assignment Performance</a>
+    <span>›</span>
+    <span>{{ classroom.name if classroom else 'Classroom' }}</span>
+</div>
+
+<div class="page-title">{{ classroom.name if classroom else 'Classroom' }}</div>
+<p class="page-sub">
+    Record tests, projects, and exams, or open a student's full grade table.
+    {% if cycle_meta %}<br><strong>Active cycle:</strong> {{ cycle_meta.cycle_label }} {{ cycle_meta.academic_year }}{% endif %}
+</p>
+
+{% if students %}
+<div class="students-grid">
+    {% for s in students %}
+    <div class="student-card">
+        <div class="student-avatar">{{ s.name[0].upper() if s.name else '?' }}</div>
+        <div class="student-info">
+            <div class="student-name">{{ s.name }}</div>
+            <span class="student-badge">{{ s.type|title }}</span>
+        </div>
+        <div class="student-actions">
+            <button class="btn-record"
+                onclick="openRecordModal('{{ s.id }}', '{{ s.type }}', {{ s.name | tojson }})">
+                + Record
+            </button>
+            <a href="{{ url_for('portal_student_performance', school_id=school_id, classroom_id=classroom.id, student_id=s.id, student_type=s.type) }}"
+               class="btn-view-table">View Table</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-data-state">
+    <div style="font-size:2.8rem;">👥</div>
+    <strong>No students enrolled yet</strong>
+    <p style="margin:10px 0 0; font-size:0.92rem;">Students will appear here once they join this classroom.</p>
+</div>
+{% endif %}
+
+<!-- Performance Record Modal -->
+<div class="modal-overlay" id="recordModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal()" title="Close">&times;</button>
+        <div class="modal-title" id="modalHeading">📝 Record Performance</div>
+
+        <form method="POST" action="{{ url_for('record_performance') }}" id="recordForm">
+            <input type="hidden" name="school_id" value="{{ school_id }}">
+            <input type="hidden" name="classroom_id" value="{{ classroom.id if classroom else '' }}">
+            <input type="hidden" name="student_id" id="hiddenStudentId" value="">
+            <input type="hidden" name="student_type" id="hiddenStudentType" value="">
+
+            <div class="form-group">
+                <label>Subject / Module</label>
+                <input type="text" name="subject_name"
+                       list="subjects-datalist"
+                       placeholder="Type or select a subject…"
+                       required autocomplete="off">
+                <input type="hidden" name="subject_ref_id" id="subjectRefId" value="">
+                <input type="hidden" name="subject_ref_type" id="subjectRefType" value="">
+                <datalist id="subjects-datalist">
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label>Assignment Name</label>
+                <input type="text" name="assignment_name"
+                       placeholder="e.g. Science Test 2, Programming Exam" required>
+            </div>
+
+            <div class="form-group">
+                <label>Assignment Type</label>
+                <select name="assignment_type">
+                    <option value="test">Test</option>
+                    <option value="project">Project</option>
+                    <option value="exam">Exam</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Marks Scored</label>
+                    <input type="number" name="marks_scored"
+                           step="0.5" min="0"
+                           placeholder="e.g. 24" required>
+                </div>
+                <div class="form-group">
+                    <label>Out of (Total)</label>
+                    <input type="number" name="total_marks"
+                           step="0.5" min="1" value="100" required>
+                    <span class="hint-text">Percentage is auto-calculated</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Teacher Comment <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+                <textarea name="teacher_comment"
+                          placeholder="Write a note about this student's performance…"></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit-modal">Save Performance Record</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(studentId, studentType, studentName) {
+    document.getElementById('hiddenStudentId').value = studentId;
+    document.getElementById('hiddenStudentType').value = studentType;
+    document.getElementById('modalHeading').textContent = '📝 Record – ' + studentName;
+    loadSubjectOptions(studentId, studentType);
+    document.getElementById('recordModal').classList.add('open');
+}
+function closeModal() {
+    document.getElementById('recordModal').classList.remove('open');
+    document.getElementById('recordForm').reset();
+}
+
+function bindSubjectRef() {
+    var input = document.querySelector('input[name="subject_name"]');
+    var list = document.getElementById('subjects-datalist');
+    var refId = document.getElementById('subjectRefId');
+    var refType = document.getElementById('subjectRefType');
+    if (!input || !list) return;
+
+    input.addEventListener('input', function() {
+        refId.value = '';
+        refType.value = '';
+        var opts = list.querySelectorAll('option');
+        opts.forEach(function(opt) {
+            if (opt.value === input.value) {
+                refId.value = opt.getAttribute('data-id') || '';
+                refType.value = opt.getAttribute('data-kind') || '';
+            }
+        });
+    });
+}
+
+function loadSubjectOptions(studentId, studentType) {
+    var list = document.getElementById('subjects-datalist');
+    if (!list) return;
+    list.innerHTML = '';
+
+    var url = '{{ url_for("portal_student_subject_options") }}' + '?student_id=' + encodeURIComponent(studentId) + '&student_type=' + encodeURIComponent(studentType);
+    fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (!data || !data.ok || !Array.isArray(data.items)) return;
+            data.items.forEach(function(item) {
+                var opt = document.createElement('option');
+                opt.value = item.name || '';
+                opt.setAttribute('data-id', item.id || '');
+                opt.setAttribute('data-kind', item.kind || '');
+                list.appendChild(opt);
+            });
+        })
+        .catch(function() {});
+}
+// shorthand so onclick inline can use shorter name
+function openRecordModal(id, type, name) { openModal(id, type, name); }
+bindSubjectRef();
+document.getElementById('recordModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}

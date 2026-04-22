@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+        :root {
+            --bg: #f4f7fb;
+            --sidebar: #14213d;
+            --sidebar-alt: #0f172a;
+            --accent: #3b82f6;
+            --soft: #e2e8f0;
+            --text: #0f172a;
+            --text-light: #f8fafc;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background: radial-gradient(circle at top left, rgba(59,130,246,0.12), transparent 25%),
+                        linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+            color: var(--text);
+        }
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #0f172a 0%, #14213d 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            padding: 28px 18px;
+            box-shadow: 0 0 30px rgba(15, 23, 42, 0.18);
+            position: sticky;
+            top: 0;
+            z-index: 1040;
+        }
+        .mobile-nav-toggle {
+            display: none;
+            position: fixed;
+            top: 14px;
+            left: 12px;
+            z-index: 1055;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: #f8fafc;
+            background: linear-gradient(135deg, #0f172a, #1e3a8a);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+            font-weight: 700;
+            font-size: 0.86rem;
+        }
+        .sidebar .brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 28px;
+            letter-spacing: 0.04em;
+        }
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .sidebar a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-radius: 14px;
+            color: var(--text-light);
+            text-decoration: none;
+            background: rgba(255,255,255,0.04);
+            transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .sidebar a:hover {
+            background: rgba(59,130,246,0.18);
+            transform: translateX(2px);
+            box-shadow: 0 10px 30px rgba(15,23,42,0.14);
+        }
+        .sidebar a.active {
+            background: rgba(59,130,246,0.28);
+            border-color: rgba(59,130,246,0.45);
+        }
+        .sidebar a.back-button {
+            background: rgba(59,130,246,0.25);
+            border-color: rgba(59,130,246,0.4);
+            font-weight: 600;
+            margin-bottom: 12px;
+            position: relative;
+        }
+        .sidebar a.back-button:hover {
+            background: rgba(59,130,246,0.4);
+            border-color: rgba(59,130,246,0.6);
+            transform: translateX(3px);
+            box-shadow: 0 12px 35px rgba(59,130,246,0.25);
+        }
+        .sidebar a.back-button::before {
+            content: "←";
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+        .sidebar a.logout {
+            margin-top: 16px;
+            color: #f8fafc;
+            background: #ef4444;
+            border-color: rgba(239,68,68,0.5);
+        }
+        .sidebar a.logout:hover {
+            background: #dc2626;
+        }
+        .profile-section {
+            background: rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(59,130,246,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            border: 2px solid rgba(59,130,246,0.5);
+        }
+        .profile-details {
+            flex: 1;
+            min-width: 0;
+        }
+        .profile-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .profile-role {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .profile-link {
+            display: block;
+            text-align: center;
+            padding: 8px 12px;
+            background: rgba(59,130,246,0.2);
+            color: var(--text-light);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid rgba(59,130,246,0.3);
+            transition: all 0.2s ease;
+        }
+        .profile-link:hover {
+            background: rgba(59,130,246,0.4);
+            border-color: rgba(59,130,246,0.6);
+            transform: translateY(-1px);
+        }
+        .main {
+            flex: 1;
+            padding: 28px 30px;
+            min-height: 100vh;
+        }
+        .main h1 {
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-size: 2rem;
+            letter-spacing: -0.03em;
+        }
+        .main section {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+        .flash-container {
+            position: fixed;
+            top: 22px;
+            right: 22px;
+            z-index: 1080;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: min(420px, calc(100% - 44px));
+        }
+        .flash-message {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+            color: #0f172a;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: rgba(255,255,255,0.96);
+            opacity: 0;
+            transform: translateY(-10px);
+            animation: flashIn 0.25s ease forwards;
+        }
+        .flash-message.flash-success { border-color: rgba(34, 197, 94, 0.24); background: rgba(236, 253, 245, 0.95); }
+        .flash-message.flash-error,
+        .flash-message.flash-danger { border-color: rgba(239, 68, 68, 0.24); background: rgba(254, 242, 242, 0.95); }
+        .flash-message.flash-info { border-color: rgba(59, 130, 246, 0.24); background: rgba(235, 242, 255, 0.95); }
+        .flash-message span { flex: 1; font-weight: 600; line-height: 1.4; }
+        .flash-close {
+            border: none;
+            background: transparent;
+            color: inherit;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .flash-hidden {
+            opacity: 0;
+            transform: translateY(-16px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
+        }
+        .notify-launcher {
+            position: fixed;
+            top: 18px;
+            right: 22px;
+            z-index: 1090;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+            color: #0f172a;
+            font-size: 1.05rem;
+            cursor: pointer;
+        }
+        .notify-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            border: 2px solid #fff;
+        }
+        .notify-drawer {
+            position: fixed;
+            top: 76px;
+            right: 22px;
+            width: min(420px, calc(100vw - 26px));
+            max-height: calc(100vh - 120px);
+            overflow: hidden;
+            border-radius: 16px;
+            border: 1px solid rgba(15, 23, 42, 0.10);
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+            z-index: 1090;
+            display: none;
+        }
+        .notify-drawer.show { display: block; }
+        .notify-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .notify-head h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .notify-head button {
+            border: none;
+            background: transparent;
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .notify-list {
+            max-height: calc(100vh - 190px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .notify-item {
+            display: block;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            background: #fff;
+        }
+        .notify-item.unread { background: #eff6ff; }
+        .notify-item h5 {
+            margin: 0 0 4px;
+            font-size: 0.84rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .notify-item p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #475569;
+            line-height: 1.45;
+        }
+        .notify-item .notify-time {
+            margin-top: 6px;
+            font-size: 0.73rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .notify-empty {
+            padding: 20px;
+            text-align: center;
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+        @keyframes flashIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 991.98px) {
+            body { display: block; }
+            .mobile-nav-toggle { display: inline-flex; align-items: center; gap: 8px; }
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: min(320px, 88vw);
+                height: 100vh;
+                min-height: 100vh;
+                overflow-y: auto;
+                border-radius: 0 18px 18px 0;
+                padding-top: 62px;
+            }
+            .main {
+                width: 100%;
+                min-height: 100vh;
+                padding: 72px 14px 20px;
+            }
+        }
+        @media (min-width: 992px) {
+            .dashboard-sidebar {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="flash-close" onclick="this.closest('.flash-message').remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <button id="notifyLauncher" class="notify-launcher" type="button" aria-label="Open notifications">
+        <span>🔔</span>
+        <span id="notifyBadge" class="notify-badge" {% if not unread_notifications_count %}style="display:none;"{% endif %}>{{ unread_notifications_count or 0 }}</span>
+    </button>
+
+    <div id="notifyDrawer" class="notify-drawer" aria-live="polite">
+        <div class="notify-head">
+            <h4>Notifications</h4>
+            <div>
+                <button id="notifyMarkAll" type="button">Mark all read</button>
+                <button id="notifyClose" type="button">Close</button>
+            </div>
+        </div>
+        <div id="notifyList" class="notify-list">
+            <div class="notify-empty">Loading notifications...</div>
+        </div>
+    </div>
+
+    <button
+        type="button"
+        class="mobile-nav-toggle"
+        data-bs-toggle="collapse"
+        data-bs-target="#dashboardSidebar"
+        aria-controls="dashboardSidebar"
+        aria-expanded="false"
+        aria-label="Toggle dashboard navigation"
+    >Menu</button>
+
+    <div class="sidebar collapse d-lg-block dashboard-sidebar" id="dashboardSidebar">
+        <div class="brand">{{ role }} Hub</div>
+
+        <!-- Profile Section -->
+        <div class="profile-section">
+            <div class="profile-info">
+                <div class="profile-avatar">
+                    {{ (session.user_name or session.username or "U")[0].upper() }}
+                </div>
+                <div class="profile-details">
+                    <div class="profile-name">{{ session.user_name or session.username or "User" }}</div>
+                    <div class="profile-role">{{ session.role|title if session.role else "User" }}</div>
+                </div>
+            </div>
+            {% if role != 'Profile' %}
+            <a href="{{ url_for('user_profile') }}" class="profile-link">View Profile</a>
+            {% endif %}
+        </div>
+
+        <nav>
+            {% for tab in tabs %}
+                {% if tab == 'Back to Dashboard' %}
+                    {% if session.role == 'student' %}
+                        <a href="{{ url_for('student_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% elif session.role == 'teacher' %}
+                        <a href="{{ url_for('teacher_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% elif session.role == 'lecturer' %}
+                        <a href="{{ url_for('lecturer_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% elif session.role == 'learner' %}
+                        <a href="{{ url_for('learner_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% elif session.role == 'parent' %}
+                        <a href="{{ url_for('parent_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% elif session.role == 'staff' %}
+                        <a href="{{ url_for('staff_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% elif session.role == 'school_admin' %}
+                        <a href="{{ url_for('school_admin_dashboard', school_id=session.school_id) }}" class="back-button">{{ tab }}</a>
+                    {% else %}
+                        <a href="{{ url_for('schools_directory') }}" class="back-button">{{ tab }}</a>
+                    {% endif %}
+                {% else %}
+                    {% set anchor = tab|lower %}
+                    {% if tab == 'Classroom' %}
+                        {% set anchor = 'classrooms' %}
+                    {% elif tab == 'AI' %}
+                        {% set anchor = 'ai-panel' %}
+                    {% elif tab == 'Meetings' %}
+                        {% set anchor = 'meetings' %}
+                    {% endif %}
+                    {% set tab_label = tab %}
+                    {% if tab == 'AI' %}
+                        {% set tab_label = '[AI] ' ~ tab %}
+                    {% endif %}
+                    <a href="#{{ anchor }}">{{ tab_label }}</a>
+                {% endif %}
+            {% endfor %}
+            <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+        </nav>
+    </div>
+
+    <div class="main">
+        {% block content %}
+        <!-- Each dashboard will override this -->
+        {% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.flash-message').forEach(function(toast) {
+                setTimeout(function() {
+                    toast.classList.add('flash-hidden');
+                    setTimeout(function() { toast.remove(); }, 280);
+                }, 4200);
+            });
+
+            var sidebar = document.getElementById('dashboardSidebar');
+            if (sidebar) {
+                sidebar.querySelectorAll('a').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        if (window.innerWidth < 992 && sidebar.classList.contains('show')) {
+                            bootstrap.Collapse.getOrCreateInstance(sidebar).hide();
+                        }
+                    });
+                });
+            }
+
+            var launcher = document.getElementById('notifyLauncher');
+            var drawer = document.getElementById('notifyDrawer');
+            var list = document.getElementById('notifyList');
+            var badge = document.getElementById('notifyBadge');
+            var closeBtn = document.getElementById('notifyClose');
+            var markAllBtn = document.getElementById('notifyMarkAll');
+
+            function escapeHtml(value) {
+                return String(value || '').replace(/[&<>'"]/g, function (ch) {
+                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\'': '&#39;', '"': '&quot;' })[ch];
+                });
+            }
+
+            function updateBadge(unread) {
+                var count = Number(unread || 0);
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline-flex' : 'none';
+            }
+
+            function renderNotifications(rows) {
+                if (!rows || !rows.length) {
+                    list.innerHTML = '<div class="notify-empty">No notifications yet.</div>';
+                    return;
+                }
+
+                list.innerHTML = rows.map(function (n) {
+                    var unread = !n.is_read;
+                    var created = (n.created_at || '').replace('T', ' ').slice(0, 16);
+                    return '<article class="notify-item ' + (unread ? 'unread' : '') + '" data-id="' + n.id + '">' +
+                        '<h5>' + escapeHtml(n.title || 'Notification') + '</h5>' +
+                        '<p>' + escapeHtml(n.message || '') + '</p>' +
+                        '<div class="notify-time">' + escapeHtml(created) + '</div>' +
+                    '</article>';
+                }).join('');
+
+                list.querySelectorAll('.notify-item').forEach(function (item) {
+                    item.addEventListener('click', function () {
+                        var id = item.getAttribute('data-id');
+                        fetch('/api/notifications/' + id + '/read', { method: 'POST' })
+                            .then(function () { item.classList.remove('unread'); refreshNotifications(); })
+                            .catch(function () {});
+                    });
+                });
+            }
+
+            function refreshNotifications() {
+                fetch('/api/notifications?limit=25')
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        if (!data.ok) { return; }
+                        renderNotifications(data.notifications || []);
+                        updateBadge(data.unread_count || 0);
+                    })
+                    .catch(function () {});
+            }
+
+            launcher.addEventListener('click', function () {
+                drawer.classList.toggle('show');
+                if (drawer.classList.contains('show')) {
+                    refreshNotifications();
+                }
+            });
+
+            closeBtn.addEventListener('click', function () {
+                drawer.classList.remove('show');
+            });
+
+            markAllBtn.addEventListener('click', function () {
+                fetch('/api/notifications/read-all', { method: 'POST' })
+                    .then(function () { refreshNotifications(); })
+                    .catch(function () {});
+            });
+
+            document.addEventListener('click', function (evt) {
+                if (!drawer.classList.contains('show')) return;
+                if (!drawer.contains(evt.target) && !launcher.contains(evt.target)) {
+                    drawer.classList.remove('show');
+                }
+            });
+
+            refreshNotifications();
+            setInterval(refreshNotifications, 25000);
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>

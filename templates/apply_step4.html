@@ -1,0 +1,72 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 4 – Academic Background{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 4: Academic Background</h2>
+  <p class="card-sub">Provide details of your highest qualification and any previous study.</p>
+
+  <form method="POST" action="{{ url_for('apply_step4', school_id=school.id) }}">
+    <div class="form-grid two-col">
+
+      <div class="field full">
+        <label for="highest_qualification">Highest Qualification Obtained</label>
+        <select name="highest_qualification" id="highest_qualification">
+          <option value="">— Select —</option>
+          {% for q in ['Form 5 / SGCSE / IGCSE / O-Level','Form 3 / LGCSE / Junior Certificate','Diploma','Bachelor Degree','Honours Degree','Master Degree','Doctorate / PhD','Other'] %}
+          <option value="{{ q }}" {% if draft and draft.highest_qualification == q %}selected{% endif %}>{{ q }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="institution_attended">Institution Attended</label>
+        <input type="text" name="institution_attended" id="institution_attended" placeholder="Name of school or college" value="{{ draft.institution_attended or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="year_completed">Year Completed</label>
+        <input type="text" name="year_completed" id="year_completed" placeholder="e.g. 2024" maxlength="4" value="{{ draft.year_completed or '' }}">
+      </div>
+
+      <div class="field full">
+        <label for="subjects_passed">Subjects Passed (and grades where available)</label>
+        <textarea name="subjects_passed" id="subjects_passed" placeholder="e.g.&#10;Biology – A&#10;Chemistry – B&#10;Mathematics – C&#10;English – B">{{ draft.subjects_passed or '' }}</textarea>
+      </div>
+
+      <div class="field full">
+        <label>Are you applying for Recognition of Prior Learning (RPL)?</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="has_rpl" value="no" {% if not draft or not draft.has_rpl %}checked{% endif %}> No</label>
+          <label class="radio-opt"><input type="radio" name="has_rpl" value="yes" {% if draft and draft.has_rpl %}checked{% endif %}> Yes</label>
+        </div>
+      </div>
+
+      <div class="field full" id="rpl-row" style="display:{% if draft and draft.has_rpl %}block{% else %}none{% endif %};">
+        <div class="info-box" style="margin-bottom:12px;">
+          <strong>RPL Requirements</strong>
+          You must be 25 years or older, have at least 5 years of relevant work experience, and the experience must be relevant to the qualification you are applying for.
+        </div>
+        <label for="rpl_details">Describe your relevant work experience</label>
+        <textarea name="rpl_details" id="rpl_details" placeholder="Describe your role, years of experience, and how it relates to the programme...">{{ draft.rpl_details or '' }}</textarea>
+      </div>
+
+    </div>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_step3', school_id=school.id) }}" class="btn-back">← Back</a>
+      <button type="submit" class="btn-next">Next: Document Uploads →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const rplRadios = document.querySelectorAll('input[name="has_rpl"]');
+  const rplRow = document.getElementById('rpl-row');
+  rplRadios.forEach(r => r.addEventListener('change', () => {
+    rplRow.style.display = document.querySelector('input[name="has_rpl"]:checked')?.value === 'yes' ? 'block' : 'none';
+  }));
+</script>
+{% endblock %}

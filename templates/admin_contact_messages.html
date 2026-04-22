@@ -1,0 +1,155 @@
+{% extends "admin_base.html" %}
+{% block title %}Contact Messages{% endblock %}
+{% block header %}Contact Messages{% endblock %}
+
+{% block content %}
+<style>
+  .msg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+  }
+  .msg-card {
+    border: 1px solid #d7def3;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f9fbff;
+    box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08);
+  }
+  .msg-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: linear-gradient(90deg, #2350bf, #4b3dd1 60%, #6a48ff);
+    color: #eef2ff;
+  }
+  .msg-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+  .msg-date {
+    font-size: 0.72rem;
+    font-weight: 700;
+    opacity: 0.92;
+    white-space: nowrap;
+  }
+  .msg-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px 0;
+  }
+  .msg-pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    border: 1px solid;
+  }
+  .pill-sender { color: #0f172a; background: #e2e8f0; border-color: #cbd5e1; }
+  .pill-source { color: #1d4ed8; background: #dbeafe; border-color: #bfdbfe; }
+  .pill-channel { color: #065f46; background: #d1fae5; border-color: #a7f3d0; }
+  .msg-body {
+    padding: 12px;
+    color: #334155;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    min-height: 94px;
+  }
+  .msg-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid #e6ebfb;
+    font-size: 0.82rem;
+    color: #475569;
+  }
+  .msg-empty {
+    padding: 48px;
+    text-align: center;
+    color: #6b7280;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.07);
+  }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+  <div>
+    <h2 style="margin:0;font-size:1.35rem;font-weight:800;color:#111827;">Contact Messages</h2>
+    <p style="margin:6px 0 0;color:#6b7280;font-size:0.9rem;">
+      {% if is_global %}
+      Messages from Smart School Hub and all school websites.
+      {% else %}
+      Messages submitted on {{ school.name }} website.
+      {% endif %}
+    </p>
+  </div>
+  {% if is_global %}
+  <a href="{{ url_for('admin_dashboard') }}" style="text-decoration:none; font-size:0.85rem; color:#6b7280; border:1px solid #e5e7eb; padding:8px 16px; border-radius:8px; background:#fff;">Back to Admin</a>
+  {% else %}
+  <a href="{{ url_for('school_admin_dashboard', school_id=school.id) }}" style="text-decoration:none; font-size:0.85rem; color:#6b7280; border:1px solid #e5e7eb; padding:8px 16px; border-radius:8px; background:#fff;">Back to School Admin</a>
+  {% endif %}
+</div>
+
+{% if is_global %}
+<form method="get" style="margin-bottom:16px;display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+  <div>
+    <label for="scope" style="font-weight:700;font-size:0.82rem;color:#334155;">Scope</label>
+    <select id="scope" name="scope" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;">
+      <option value="all" {% if scope_filter == 'all' %}selected{% endif %}>All</option>
+      <option value="main" {% if scope_filter == 'main' %}selected{% endif %}>Main Smart School Hub</option>
+      <option value="school" {% if scope_filter == 'school' %}selected{% endif %}>School Websites</option>
+    </select>
+  </div>
+  <div>
+    <label for="school_id" style="font-weight:700;font-size:0.82rem;color:#334155;">School</label>
+    <select id="school_id" name="school_id" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;min-width:230px;">
+      <option value="">All schools</option>
+      {% for s in schools %}
+      <option value="{{ s.id }}" {% if selected_school_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="border:none;background:#111827;color:#fff;padding:9px 16px;border-radius:8px;font-weight:700;">Apply</button>
+</form>
+{% endif %}
+
+{% if messages %}
+<div class="msg-grid">
+  {% for m in messages %}
+  <article class="msg-card">
+    <header class="msg-head">
+      <div class="msg-title">New Contact Message</div>
+      <div class="msg-date">{{ (m.created_at or '').replace('T', ' ').replace('Z', '') }}</div>
+    </header>
+
+    <div class="msg-meta">
+      <span class="msg-pill pill-sender">Sender: {{ m.sender_name or 'Unknown' }}</span>
+      <span class="msg-pill pill-source">{{ m.school_name or m.source_site or 'Smart School Hub' }}</span>
+      <span class="msg-pill pill-channel">{{ m.source_scope or ('school_site' if m.school_id else 'main_hub') }}</span>
+    </div>
+
+    <div class="msg-body">{{ m.message or '' }}</div>
+
+    <footer class="msg-footer">
+      <span>Email: {{ m.sender_email or 'N/A' }}</span>
+      <span>Phone: {{ m.sender_phone or 'N/A' }}</span>
+    </footer>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="msg-empty">
+  <p style="font-size:1rem; font-weight:700; margin:0;">No contact messages yet.</p>
+  <p style="font-size:0.88rem; margin-top:8px;">New website enquiries will appear here.</p>
+</div>
+{% endif %}
+{% endblock %}

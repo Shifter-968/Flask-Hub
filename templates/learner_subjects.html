@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Subjects | Smart School Hub</title>
+    <style>
+        :root {
+            --bg-a: #0d1122;
+            --bg-b: #141b34;
+            --glass: rgba(13, 20, 39, 0.8);
+            --line: rgba(255, 255, 255, 0.2);
+            --text: #f0f5ff;
+            --muted: #bcc8e3;
+            --accent-1: #67e8c7;
+            --accent-2: #89b4ff;
+            --focus: #67e8c7;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1000px 420px at 5% 0%, rgba(103, 232, 199, 0.18), transparent 60%),
+                radial-gradient(1000px 520px at 100% 100%, rgba(137, 180, 255, 0.22), transparent 55%),
+                linear-gradient(155deg, var(--bg-a), var(--bg-b));
+        }
+
+        .scene {
+            min-height: 100vh;
+            padding: clamp(12px, 2vw, 28px);
+            display: grid;
+            place-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .backdrop-content {
+            width: min(980px, 95vw);
+            padding: clamp(16px, 3vw, 30px);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            filter: blur(3px) saturate(0.92);
+            opacity: 0.48;
+            transform: scale(0.98);
+        }
+
+        .backdrop-content h1 {
+            margin: 0;
+            font-size: clamp(1.65rem, 4.8vw, 3rem);
+        }
+
+        .backdrop-content p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            max-width: 62ch;
+            line-height: 1.65;
+        }
+
+        .modal-wrap {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: clamp(12px, 2vw, 24px);
+            backdrop-filter: blur(8px);
+            background: rgba(4, 8, 16, 0.4);
+            z-index: 30;
+        }
+
+        .modal-card {
+            width: min(620px, 96vw);
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            background: var(--glass);
+            box-shadow: 0 30px 70px rgba(2, 7, 17, 0.55);
+            padding: clamp(16px, 3vw, 26px);
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .modal-card::before,
+        .modal-card::after {
+            content: "";
+            position: absolute;
+            top: 14px;
+            bottom: 14px;
+            width: 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: linear-gradient(180deg, rgba(103, 232, 199, 0.22), rgba(137, 180, 255, 0.08));
+            z-index: -1;
+        }
+
+        .modal-card::before { left: -9px; }
+        .modal-card::after { right: -9px; }
+
+        .head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .head h2 {
+            margin: 0;
+            font-size: clamp(1.35rem, 3.5vw, 2rem);
+        }
+
+        .close-link {
+            text-decoration: none;
+            color: var(--muted);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 10px;
+            padding: 6px 10px;
+            font-size: 0.9rem;
+        }
+
+        .sub {
+            margin: 0 0 12px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .flash {
+            border: 1px solid rgba(255, 164, 164, 0.45);
+            background: rgba(255, 164, 164, 0.12);
+            color: #ffdcdc;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 0.93rem;
+        }
+
+        .subjects-grid {
+            display: grid;
+            gap: 8px;
+            margin: 12px 0 14px;
+            max-height: 330px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .subject-option {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+        }
+
+        .subject-option input {
+            accent-color: var(--focus);
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .empty {
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            padding: 12px;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn {
+            margin-top: 4px;
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-weight: 700;
+            color: #0b1d26;
+            background: linear-gradient(130deg, var(--accent-1), var(--accent-2));
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <main class="scene">
+        <section class="backdrop-content" aria-hidden="true">
+            <h1>Subject Selection</h1>
+            <p>Choose learner subjects to complete onboarding and activate the academic profile.</p>
+        </section>
+
+        <section class="modal-wrap" aria-modal="true" role="dialog" aria-labelledby="subjects-title">
+            <article class="modal-card">
+                <div class="head">
+                    <h2 id="subjects-title">Select Subjects</h2>
+                    <a class="close-link" href="{{ url_for('school_page', school_id=session.get('school_id'), page_slug='home') if session.get('school_id') else url_for('home') }}">Close</a>
+                </div>
+
+                <p class="sub">Pick one or more subjects before saving.</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}{% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}{% endif %}
+                {% endwith %}
+
+                <form method="post" action="{{ url_for('register_learner_subjects') }}">
+                    <input type="hidden" name="learner_id" value="{{ learner_id }}">
+
+                    <div class="subjects-grid">
+                        {% if subjects %}
+                            {% for subject in subjects %}
+                                <label class="subject-option">
+                                    <input type="checkbox" name="subjects" value="{{ subject.id }}">
+                                    <span>{{ subject.name }}</span>
+                                </label>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty">No subjects available right now.</div>
+                        {% endif %}
+                    </div>
+
+                    <button class="btn" type="submit">Save Subjects</button>
+                </form>
+            </article>
+        </section>
+    </main>
+<script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>

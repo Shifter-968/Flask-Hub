@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff | {{ school.name }}</title>
+  <style>
+    :root{--bg:#0d1122;--bg2:#141b34;--panel:rgba(15,23,42,.88);--line:rgba(255,255,255,.18);--text:#eef2ff;--muted:#b6c2dd;--accent:#67e8c7;--accent2:#89b4ff;--danger:#f87171;}
+    *{box-sizing:border-box;}
+    body{margin:0;min-height:100vh;font-family:"Space Grotesk","Segoe UI",sans-serif;color:var(--text);background:radial-gradient(900px 400px at 5% 0%,rgba(103,232,199,.13),transparent 60%),radial-gradient(900px 500px at 100% 100%,rgba(137,180,255,.18),transparent 55%),linear-gradient(155deg,var(--bg),var(--bg2));padding:clamp(14px,2vw,28px);}
+    .wrap{width:min(1100px,100%);margin:0 auto;display:grid;gap:16px;}
+    .back{text-decoration:none;color:var(--accent);font-size:.9rem;}
+    .back:hover{text-decoration:underline;}
+    h1{margin:0;font-size:clamp(1.5rem,3vw,2.2rem);}
+    .panel{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:clamp(14px,2vw,24px);}
+    .panel h2{margin:0 0 16px;font-size:1.1rem;color:var(--accent);}
+    table{width:100%;border-collapse:collapse;font-size:.9rem;}
+    th{text-align:left;padding:10px 12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;}
+    td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);}
+    tr:last-child td{border-bottom:0;}
+    tr:hover td{background:rgba(255,255,255,.04);}
+    .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.76rem;font-weight:700;}
+    .badge-green{background:rgba(103,232,199,.15);color:var(--accent);}
+    .badge-gray{background:rgba(255,255,255,.08);color:var(--muted);}
+    .empty{text-align:center;padding:40px;color:var(--muted);font-style:italic;}
+  </style>
+</head>
+<body>
+<main class="wrap">
+
+  <a class="back" href="{{ url_for('school_admin_dashboard', school_id=school.id) }}">← Back to Admin Dashboard</a>
+  <h1>👩‍🏫 {{ 'Lecturers' if is_tertiary else 'Teachers' }} — {{ school.name }}</h1>
+
+  <section class="panel">
+    <h2>All {{ 'Lecturers' if is_tertiary else 'Teachers' }} ({{ staff | length }})</h2>
+    {% if staff %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          {% if is_tertiary %}<th>Faculty</th>{% else %}<th>Core Subjects</th>{% endif %}
+          <th>Phone</th>
+          <th>Account</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff %}
+        <tr>
+          <td>{{ s.id }}</td>
+          <td><strong>{{ s.name }}</strong></td>
+          {% if is_tertiary %}
+            <td>{{ s.faculty or '—' }}</td>
+          {% else %}
+            <td>{{ s.core_subjects or '—' }}</td>
+          {% endif %}
+          <td>{{ s.phone_number or '—' }}</td>
+          <td>
+            {% if s.user_id %}
+              <span class="badge badge-green">Active</span>
+            {% else %}
+              <span class="badge badge-gray">No account</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty">No {{ 'lecturers' if is_tertiary else 'teachers' }} registered yet.</div>
+    {% endif %}
+  </section>
+
+</main>
+</body>
+</html>

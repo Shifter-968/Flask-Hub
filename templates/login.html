@@ -1,0 +1,360 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Smart School Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+        :root {
+            --bg-1: #0b1220;
+            --bg-2: #111a2e;
+            --glass: rgba(12, 19, 36, 0.9);
+            --line: rgba(255, 255, 255, 0.18);
+            --text: #eef4ff;
+            --muted: #b6c2db;
+            --accent: #47d7ac;
+            --danger: #ff8f8f;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(1100px 460px at 10% 0%, rgba(71, 215, 172, 0.16), transparent 60%),
+                radial-gradient(900px 500px at 100% 100%, rgba(90, 150, 255, 0.20), transparent 55%),
+                linear-gradient(155deg, var(--bg-1), var(--bg-2));
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .scene {
+            min-height: 100vh;
+            padding: clamp(12px, 2vw, 28px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .scene::before,
+        .scene::after {
+            content: "";
+            position: absolute;
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            filter: blur(16px);
+            opacity: 0.36;
+            pointer-events: none;
+        }
+
+        .scene::before {
+            left: -90px;
+            top: -70px;
+            background: radial-gradient(circle, rgba(71, 215, 172, 0.55), transparent 64%);
+        }
+
+        .scene::after {
+            right: -110px;
+            bottom: -90px;
+            background: radial-gradient(circle, rgba(122, 175, 255, 0.55), transparent 62%);
+        }
+
+        .login-layout {
+            width: min(1080px, 100%);
+            display: grid;
+            grid-template-columns: minmax(320px, 1.2fr) minmax(320px, 520px);
+            gap: clamp(20px, 4vw, 42px);
+            align-items: center;
+        }
+
+        .intro-copy {
+            padding: clamp(8px, 2vw, 20px);
+        }
+
+        .school-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: rgba(71, 215, 172, 0.12);
+            color: #d8fff0;
+            border: 1px solid rgba(71, 215, 172, 0.26);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .intro-copy h1 {
+            margin: 0;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            letter-spacing: -0.04em;
+        }
+
+        .intro-copy p {
+            margin: 14px 0 0;
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 56ch;
+        }
+
+        .login-card {
+            width: 100%;
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            background: var(--glass);
+            box-shadow: 0 28px 70px rgba(1, 6, 16, 0.55);
+            padding: clamp(16px, 3vw, 26px);
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .login-card::before,
+        .login-card::after {
+            content: "";
+            position: absolute;
+            top: 16px;
+            bottom: 16px;
+            width: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            z-index: -1;
+            background: linear-gradient(180deg, rgba(71, 215, 172, 0.18), rgba(122, 175, 255, 0.08));
+        }
+
+        .login-card::before { left: -9px; }
+        .login-card::after { right: -9px; }
+
+        .login-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .login-head h2 {
+            margin: 0;
+            font-size: clamp(1.35rem, 3.8vw, 2rem);
+        }
+
+        .close-link {
+            text-decoration: none;
+            color: var(--muted);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 10px;
+            padding: 6px 10px;
+            font-size: 0.9rem;
+        }
+
+        .login-sub {
+            margin: 0 0 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .flash {
+            border: 1px solid rgba(255, 143, 143, 0.5);
+            background: rgba(255, 143, 143, 0.12);
+            color: #ffd6d6;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 0.93rem;
+        }
+
+        form {
+            display: grid;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #d6e0f4;
+        }
+
+        input {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            padding: 11px 12px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(71, 215, 172, 0.16);
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap input {
+            padding-right: 48px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            color: #d6e0f4;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .password-toggle:hover {
+            color: #ffffff;
+        }
+
+        .btn {
+            margin-top: 4px;
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #071521;
+            font-weight: 700;
+            background: linear-gradient(135deg, #47d7ac, #6ecbff);
+            cursor: pointer;
+        }
+
+        .form-foot {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .form-foot a {
+            color: #9de7ff;
+            text-decoration: none;
+        }
+
+        @media (max-width: 880px) {
+            .login-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-copy {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="scene">
+        <div class="login-layout">
+            <section class="intro-copy" aria-hidden="true">
+                {% if school %}
+                    <div class="school-chip">School Login · {{ school.name }}</div>
+                {% endif %}
+                <h1>Welcome Back</h1>
+                <p>
+                    Secure access to your Smart School Hub workspace, classrooms, and role-specific tools.
+                    {% if school %}This login is restricted to {{ school.name }} accounts only.{% endif %}
+                </p>
+            </section>
+
+            <article class="login-card">
+                <div class="login-head">
+                    <h2 id="login-title">Login</h2>
+                    <a class="close-link" href="{{ url_for('home') }}">Close</a>
+                </div>
+                <p class="login-sub">
+                    {% if school %}
+                        Sign in with an account linked to {{ school.name }}.
+                    {% else %}
+                        Sign in with your Smart School Hub account.
+                    {% endif %}
+                </p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="post" action="{{ url_for('login') }}">
+                    {% if school_id %}
+                        <input type="hidden" name="school_id" value="{{ school_id }}">
+                    {% endif %}
+
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+
+                    <label for="password">Password</label>
+                    <div class="password-wrap">
+                        <input type="password" id="password" name="password" required>
+                        <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
+                            <svg id="eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="eye-closed" viewBox="0 0 24 24" aria-hidden="true" style="display:none;">
+                                <path d="M3 3l18 18"></path>
+                                <path d="M10.6 10.6A3 3 0 0012 15a3 3 0 002.4-4.8"></path>
+                                <path d="M9.9 5.1A11.7 11.7 0 0112 5c6.5 0 10 7 10 7a17.6 17.6 0 01-3.2 4.3"></path>
+                                <path d="M6.6 6.6C3.9 8.2 2 12 2 12a17.7 17.7 0 004.8 5.4"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <button class="btn" type="submit">Login</button>
+                </form>
+
+                <p class="form-foot">
+                    Need an account? Use your school registration page.
+                </p>
+            </article>
+        </div>
+    </main>
+    <script>
+        (function () {
+            var passwordInput = document.getElementById('password');
+            var toggleButton = document.getElementById('password-toggle');
+            var eyeOpen = document.getElementById('eye-open');
+            var eyeClosed = document.getElementById('eye-closed');
+
+            if (!passwordInput || !toggleButton || !eyeOpen || !eyeClosed) {
+                return;
+            }
+
+            toggleButton.addEventListener('click', function () {
+                var showing = passwordInput.type === 'text';
+                passwordInput.type = showing ? 'password' : 'text';
+                toggleButton.setAttribute('aria-pressed', showing ? 'false' : 'true');
+                toggleButton.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+                eyeOpen.style.display = showing ? 'block' : 'none';
+                eyeClosed.style.display = showing ? 'none' : 'block';
+            });
+        })();
+    </script>
+</body>
+</html>
+
+

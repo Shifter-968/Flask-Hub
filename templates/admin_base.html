@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+        :root {
+            --bg: #eef2ff;
+            --panel: #111827;
+            --panel-soft: #1f2937;
+            --surface: #ffffff;
+            --muted: #6b7280;
+            --accent: #4f46e5;
+            --danger: #ef4444;
+            --border: rgba(15, 23, 42, 0.08);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+            color: #111827;
+        }
+        aside {
+            width: 260px;
+            background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+            color: #e5e7eb;
+            height: 100vh;
+            padding: 28px 16px;
+            position: fixed;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16);
+            z-index: 1040;
+        }
+        .mobile-nav-toggle {
+            display: none;
+            position: fixed;
+            top: 14px;
+            left: 12px;
+            z-index: 1055;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: #f8fafc;
+            background: linear-gradient(135deg, #111827, #374151);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+            font-weight: 700;
+            font-size: 0.86rem;
+        }
+        aside h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.4rem;
+            letter-spacing: 0.02em;
+            font-weight: 700;
+        }
+        aside ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        aside ul li {
+            width: 100%;
+        }
+        aside ul li a {
+            display: block;
+            padding: 14px 18px;
+            border-radius: 14px;
+            color: #e5e7eb;
+            text-decoration: none;
+            transition: background 0.2s ease, transform 0.2s ease;
+            border: 1px solid transparent;
+        }
+        aside ul li a:hover,
+        aside ul li a.active {
+            background: rgba(79, 70, 229, 0.18);
+            transform: translateX(3px);
+            border-color: rgba(79, 70, 229, 0.35);
+        }
+        aside ul li a.logout {
+            background: #dc2626;
+            color: #fff;
+            border-color: rgba(220, 38, 38, 0.35);
+        }
+        aside ul li a.logout:hover {
+            background: #b91c1c;
+        }
+        main {
+            margin-left: 260px;
+            padding: 32px;
+            width: calc(100% - 260px);
+            min-height: 100vh;
+        }
+        main h1 {
+            margin-top: 0;
+            font-size: 2.2rem;
+            letter-spacing: -0.04em;
+            margin-bottom: 18px;
+        }
+        section {
+            margin-bottom: 32px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 18px;
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+        table thead {
+            background: #eef2ff;
+        }
+        table th, table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        table tr:last-child td {
+            border-bottom: none;
+        }
+        table tr:hover {
+            background: rgba(79, 70, 229, 0.04);
+        }
+        form {
+            margin-top: 20px;
+            background: var(--surface);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+        }
+        form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #111827;
+        }
+        form input, form select, form textarea {
+            display: block;
+            width: 100%;
+            max-width: 420px;
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        form input:focus, form select:focus, form textarea:focus {
+            outline: none;
+            border-color: rgba(79, 70, 229, 0.6);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+        }
+        form button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+        form button:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
+        @media (max-width: 991.98px) {
+            body { display: block; }
+            .mobile-nav-toggle { display: inline-flex; align-items: center; gap: 8px; }
+            aside {
+                width: min(320px, 88vw);
+                padding-top: 62px;
+                border-radius: 0 18px 18px 0;
+                overflow-y: auto;
+            }
+            main {
+                margin-left: 0;
+                width: 100%;
+                padding: 72px 14px 24px;
+            }
+        }
+        @media (max-width: 640px) {
+            aside ul li a { padding: 12px 14px; }
+            form input, form select, form textarea { max-width: 100%; }
+        }
+        @media (min-width: 992px) {
+            .admin-sidebar {
+                display: block !important;
+            }
+        }
+        .notify-launcher {
+            position: fixed;
+            top: 18px;
+            right: 22px;
+            z-index: 1090;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+            color: #0f172a;
+            font-size: 1.05rem;
+            cursor: pointer;
+        }
+        .notify-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            border: 2px solid #fff;
+        }
+        .notify-drawer {
+            position: fixed;
+            top: 76px;
+            right: 22px;
+            width: min(420px, calc(100vw - 26px));
+            max-height: calc(100vh - 120px);
+            overflow: hidden;
+            border-radius: 16px;
+            border: 1px solid rgba(15, 23, 42, 0.10);
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+            z-index: 1090;
+            display: none;
+        }
+        .notify-drawer.show { display: block; }
+        .notify-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .notify-head h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .notify-head button {
+            border: none;
+            background: transparent;
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .notify-list {
+            max-height: calc(100vh - 190px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .notify-item {
+            display: block;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            background: #fff;
+        }
+        .notify-item.unread { background: #eff6ff; }
+        .notify-item h5 {
+            margin: 0 0 4px;
+            font-size: 0.84rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .notify-item p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #475569;
+            line-height: 1.45;
+        }
+        .notify-item .notify-time {
+            margin-top: 6px;
+            font-size: 0.73rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .notify-empty {
+            padding: 20px;
+            text-align: center;
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <button id="notifyLauncher" class="notify-launcher" type="button" aria-label="Open notifications">
+        <span>🔔</span>
+        <span id="notifyBadge" class="notify-badge" {% if not unread_notifications_count %}style="display:none;"{% endif %}>{{ unread_notifications_count or 0 }}</span>
+    </button>
+
+    <div id="notifyDrawer" class="notify-drawer" aria-live="polite">
+        <div class="notify-head">
+            <h4>Notifications</h4>
+            <div>
+                <button id="notifyMarkAll" type="button">Mark all read</button>
+                <button id="notifyClose" type="button">Close</button>
+            </div>
+        </div>
+        <div id="notifyList" class="notify-list">
+            <div class="notify-empty">Loading notifications...</div>
+        </div>
+    </div>
+
+    <button
+        type="button"
+        class="mobile-nav-toggle"
+        data-bs-toggle="collapse"
+        data-bs-target="#adminSidebar"
+        aria-controls="adminSidebar"
+        aria-expanded="false"
+        aria-label="Toggle admin navigation"
+    >Menu</button>
+
+    <aside class="collapse d-lg-block admin-sidebar" id="adminSidebar">
+        <h2>Admin Panel</h2>
+        <ul>
+            {% if session.get('role') == 'school_admin' and session.get('school_id') %}
+            <li><a href="{{ url_for('school_admin_dashboard', school_id=session.get('school_id')) }}">School Dashboard</a></li>
+            <li><a href="{{ url_for('admin_manage_students', school_id=session.get('school_id')) }}">Manage {{ 'Students' if session.get('school_type') == 'tertiary' else 'Learners' }}</a></li>
+            <li><a href="{{ url_for('admin_manage_classrooms', school_id=session.get('school_id')) }}">Manage Classrooms</a></li>
+            <li><a href="{{ url_for('admin_manage_staff', school_id=session.get('school_id')) }}">Manage Staff</a></li>
+            <li><a href="{{ url_for('admin_applications', school_id=session.get('school_id')) }}">Applications</a></li>
+            <li><a href="{{ url_for('school_admin_contact_messages', school_id=session.get('school_id')) }}">Contact Messages</a></li>
+            {% if session.get('school_type') != 'tertiary' %}
+            <li><a href="{{ url_for('admin_manage_subjects', school_id=session.get('school_id')) }}">Manage Subjects</a></li>
+            {% endif %}
+            {% if session.get('school_type') == 'tertiary' %}
+            <li><a href="{{ url_for('school_admin_courses', school_id=session.get('school_id')) }}">Manage Courses</a></li>
+            <li><a href="{{ url_for('school_admin_modules', school_id=session.get('school_id')) }}">Manage Modules</a></li>
+            <li><a href="{{ url_for('school_admin_curriculum', school_id=session.get('school_id')) }}">Manage Mappings</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('admin_manage_announcements', school_id=session.get('school_id')) }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin_manage_events', school_id=session.get('school_id')) }}">Events</a></li>
+            <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
+            {% else %}
+            <li><a href="{{ url_for('admin_users') }}">Manage Users</a></li>
+            <li><a href="{{ url_for('admin_schools') }}">Manage Schools</a></li>
+            <li><a href="{{ url_for('admin_subjects') }}">Manage Subjects</a></li>
+            <li><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+            <li><a href="{{ url_for('admin_modules') }}">Manage Modules</a></li>
+            <li><a href="{{ url_for('admin_curriculum') }}">Manage Mappings</a></li>
+            <li><a href="{{ url_for('admin_contact_messages') }}">Contact Messages</a></li>
+            <li><a href="{{ url_for('admin_logout') }}" class="logout">Logout</a></li>
+            {% endif %}
+        </ul>
+    </aside>
+
+    <main>
+        <h1>{% block header %}Admin Dashboard{% endblock %}</h1>
+        {% block content %}
+        <!-- Child templates inject their content here -->
+        {% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            var sidebar = document.getElementById('adminSidebar');
+            if (!sidebar) {
+                return;
+            }
+
+            sidebar.querySelectorAll('a').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992 && sidebar.classList.contains('show')) {
+                        bootstrap.Collapse.getOrCreateInstance(sidebar).hide();
+                    }
+                });
+            });
+
+            var launcher = document.getElementById('notifyLauncher');
+            var drawer = document.getElementById('notifyDrawer');
+            var list = document.getElementById('notifyList');
+            var badge = document.getElementById('notifyBadge');
+            var closeBtn = document.getElementById('notifyClose');
+            var markAllBtn = document.getElementById('notifyMarkAll');
+
+            function escapeHtml(value) {
+                return String(value || '').replace(/[&<>'"]/g, function (ch) {
+                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\'': '&#39;', '"': '&quot;' })[ch];
+                });
+            }
+
+            function updateBadge(unread) {
+                var count = Number(unread || 0);
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline-flex' : 'none';
+            }
+
+            function renderNotifications(rows) {
+                if (!rows || !rows.length) {
+                    list.innerHTML = '<div class="notify-empty">No notifications yet.</div>';
+                    return;
+                }
+
+                list.innerHTML = rows.map(function (n) {
+                    var unread = !n.is_read;
+                    var created = (n.created_at || '').replace('T', ' ').slice(0, 16);
+                    return '<article class="notify-item ' + (unread ? 'unread' : '') + '" data-id="' + n.id + '">' +
+                        '<h5>' + escapeHtml(n.title || 'Notification') + '</h5>' +
+                        '<p>' + escapeHtml(n.message || '') + '</p>' +
+                        '<div class="notify-time">' + escapeHtml(created) + '</div>' +
+                    '</article>';
+                }).join('');
+
+                list.querySelectorAll('.notify-item').forEach(function (item) {
+                    item.addEventListener('click', function () {
+                        var id = item.getAttribute('data-id');
+                        fetch('/api/notifications/' + id + '/read', { method: 'POST' })
+                            .then(function () { item.classList.remove('unread'); refreshNotifications(); })
+                            .catch(function () {});
+                    });
+                });
+            }
+
+            function refreshNotifications() {
+                fetch('/api/notifications?limit=25')
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        if (!data.ok) { return; }
+                        renderNotifications(data.notifications || []);
+                        updateBadge(data.unread_count || 0);
+                    })
+                    .catch(function () {});
+            }
+
+            launcher.addEventListener('click', function () {
+                drawer.classList.toggle('show');
+                if (drawer.classList.contains('show')) {
+                    refreshNotifications();
+                }
+            });
+
+            closeBtn.addEventListener('click', function () {
+                drawer.classList.remove('show');
+            });
+
+            markAllBtn.addEventListener('click', function () {
+                fetch('/api/notifications/read-all', { method: 'POST' })
+                    .then(function () { refreshNotifications(); })
+                    .catch(function () {});
+            });
+
+            document.addEventListener('click', function (evt) {
+                if (!drawer.classList.contains('show')) return;
+                if (!drawer.contains(evt.target) && !launcher.contains(evt.target)) {
+                    drawer.classList.remove('show');
+                }
+            });
+
+            refreshNotifications();
+            setInterval(refreshNotifications, 25000);
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>

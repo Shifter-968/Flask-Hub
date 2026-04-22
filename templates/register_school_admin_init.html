@@ -1,0 +1,195 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Admin Registration | Smart School Hub</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+    :root {
+      --bg-a: #0d1122;
+      --bg-b: #141b34;
+      --glass: rgba(13, 20, 39, 0.8);
+      --line: rgba(255, 255, 255, 0.2);
+      --text: #f0f5ff;
+      --muted: #bcc8e3;
+      --accent-1: #67e8c7;
+      --accent-2: #89b4ff;
+      --focus: #67e8c7;
+      --error: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 420px at 5% 0%, rgba(103, 232, 199, 0.18), transparent 60%),
+        radial-gradient(1000px 520px at 100% 100%, rgba(137, 180, 255, 0.22), transparent 55%),
+        linear-gradient(155deg, var(--bg-a), var(--bg-b));
+    }
+    .scene { min-height: 100vh; padding: clamp(12px,2vw,28px); display: grid; place-items: center; }
+    .modal-wrap {
+      width: min(560px, 96vw);
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      box-shadow: 0 30px 70px rgba(2, 7, 17, 0.55);
+      padding: clamp(16px, 3vw, 26px);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .modal-wrap::before,
+    .modal-wrap::after {
+      content: "";
+      position: absolute;
+      top: 14px;
+      bottom: 14px;
+      width: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(180deg, rgba(103, 232, 199, 0.22), rgba(137, 180, 255, 0.08));
+      z-index: -1;
+    }
+    .modal-wrap::before { left: -9px; }
+    .modal-wrap::after { right: -9px; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
+    .head h2 { margin: 0; font-size: clamp(1.35rem, 3.5vw, 2rem); }
+    .back-link {
+      text-decoration: none;
+      color: var(--muted);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    .back-link:hover {
+      border-color: var(--accent-1);
+      color: var(--accent-1);
+    }
+    .sub { margin: 0 0 12px; color: var(--muted); line-height: 1.6; }
+    .flash {
+      border: 1px solid rgba(255, 164, 164, 0.45);
+      background: rgba(255, 164, 164, 0.12);
+      color: #ffdcdc;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 0.93rem;
+    }
+    form { display: grid; gap: 10px; }
+    label { font-size: 0.9rem; color: #dbe4f9; font-weight: 600; }
+    input, select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 11px 12px;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus, select:focus { 
+      border-color: var(--focus); 
+      box-shadow: 0 0 0 3px rgba(103, 232, 199, 0.16); 
+    }
+    select option {
+      background: var(--bg-b);
+      color: #fff;
+    }
+    .btn {
+      margin-top: 4px;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 700;
+      color: #0b1d26;
+      background: linear-gradient(130deg, var(--accent-1), var(--accent-2));
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(103, 232, 199, 0.3);
+    }
+    .btn:active { transform: translateY(0); }
+    .form-group { display: grid; gap: 6px; }
+  </style>
+</head>
+<body>
+  <main class="scene">
+    <section class="modal-wrap" aria-modal="true" role="dialog" aria-labelledby="school-admin-register-title">
+      <div class="head">
+        <h2 id="school-admin-register-title">School Admin Registration</h2>
+        <a class="back-link" href="{{ url_for('home') }}">Back</a>
+      </div>
+      <p class="sub">Register as a school administrator. Select your school and provide account details.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}{% endif %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('register_school_admin_handler') }}">
+        <!-- School Selection -->
+        <div class="form-group">
+          <label for="school_id">Select Your School *</label>
+          <select id="school_id" name="school_id" required>
+            <option value="">-- Choose School --</option>
+            {% for school in schools %}
+            <option value="{{ school.id }}">{{ school.name }} ({{ school.school_type | default('N/A') }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- User Account Fields -->
+        <div class="form-group">
+          <label for="username">Username *</label>
+          <input id="username" type="text" name="username" placeholder="e.g., admin_limko" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input id="email" type="email" name="email" placeholder="e.g., admin@school.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password *</label>
+          <input 
+            id="password" 
+            type="password" 
+            name="password" 
+            placeholder="Min 8 chars, mix of uppercase, lowercase, number, special char"
+            minlength="8" 
+            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$"
+            title="Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and special character."
+            required
+          >
+        </div>
+
+        <!-- Admin Profile Fields -->
+        <div class="form-group">
+          <label for="name">Full Name *</label>
+          <input id="name" type="text" name="name" placeholder="e.g., John Doe" required>
+        </div>
+
+        <div class="form-group">
+          <label for="phone_number">Phone Number</label>
+          <input id="phone_number" type="tel" name="phone_number" placeholder="e.g., +27 123 456 7890">
+        </div>
+
+        <button class="btn" type="submit">Create Admin Account</button>
+      </form>
+
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.85rem; color: var(--muted);">
+        <p style="margin: 0;">Already have an account? <a href="{{ url_for('login') }}" style="color: var(--accent-1); text-decoration: none;">Login here</a></p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+
+
+

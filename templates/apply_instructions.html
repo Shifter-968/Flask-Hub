@@ -1,0 +1,136 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Application Instructions{% endblock %}
+
+{% block extra_head %}
+<style>
+  .instr-hero { background: linear-gradient(135deg, var(--brand) 0%, #0a3d80 100%); color: #fff; padding: 48px var(--edge); text-align: center; }
+  .instr-hero h2 { font-size: clamp(1.4rem,3vw,2rem); font-weight: 700; margin-bottom: 10px; }
+  .instr-hero p  { font-size: 1rem; opacity: 0.88; max-width: 600px; margin: 0 auto 24px; }
+  .hero-btns { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .btn-prospectus { background: rgba(255,255,255,0.18); color: #fff; border: 2px solid rgba(255,255,255,0.5); padding: 13px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 0.95rem; transition: all 0.2s; }
+  .btn-prospectus:hover { background: rgba(255,255,255,0.28); }
+  .btn-start { background: var(--accent); color: #fff; border: none; padding: 13px 32px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: background 0.2s; }
+  .btn-start:hover { background: #d46a0a; }
+
+  .instr-body { max-width: 860px; margin: 0 auto; padding: 36px var(--edge) 60px; }
+  .instr-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(22,32,51,0.08); padding: clamp(20px,4vw,38px); margin-bottom: 20px; }
+  .instr-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--brand); border-left: 4px solid var(--accent); padding-left: 12px; margin-bottom: 18px; }
+  .instr-card ul { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .instr-card li { font-size: 0.9rem; color: #374151; line-height: 1.55; }
+  .instr-card li strong { color: var(--ink); }
+
+  .bank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 520px) { .bank-grid { grid-template-columns: 1fr; } }
+  .bank-item { background: #f8faff; border: 1px solid #dbeafe; border-radius: 10px; padding: 14px; }
+  .bank-item .bk-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .bank-item .bk-value { font-size: 0.95rem; font-weight: 700; color: var(--ink); }
+  .fee-badge { display: inline-block; background: var(--accent); color: #fff; font-size: 1.4rem; font-weight: 800; padding: 10px 22px; border-radius: 12px; margin-bottom: 14px; }
+
+  .govsponsored { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: 14px; padding: 20px 24px; margin-top: 4px; }
+  .govsponsored h4 { font-size: 0.88rem; font-weight: 700; color: #166534; margin-bottom: 12px; }
+  .govsponsored ul { padding-left: 18px; }
+  .govsponsored li { font-size: 0.87rem; color: #166534; padding: 3px 0; }
+
+  .bottom-cta { text-align: center; padding: 40px var(--edge); background: #fff; border-top: 1px solid #e2e8f0; }
+  .bottom-cta p { color: var(--muted); margin-bottom: 18px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin: -36px calc(-1 * var(--edge)) 36px; overflow: hidden;">
+  <div class="instr-hero">
+    <h2>EMRC Online Application {{ "2026" }}</h2>
+    <p>Read the instructions carefully before completing the application form. All required documents must accompany your submission.</p>
+    <div class="hero-btns">
+      <a href="https://bala268.com/images/EMRC%20MAIN%20PROSPECTUS.pdf" target="_blank" rel="noopener" class="btn-prospectus">📄 View Prospectus</a>
+      <a href="{{ url_for('apply_step1', school_id=school.id) }}" class="btn-start">Start Application Now →</a>
+    </div>
+  </div>
+</div>
+
+<div class="instr-body" style="padding-left:0; padding-right:0;">
+
+  <div class="instr-card">
+    <h3>Section A: General Instructions</h3>
+    <ul>
+      <li>This form must be completed by <strong>all students applying to EMR College for the first time.</strong></li>
+      <li>It is in your own interest to ensure this form is <strong>completed in full</strong> and that certified copies of all supporting documents are enclosed.</li>
+      <li>If any questions are left unanswered or certified documents are not enclosed it will cause the application to be unsuccessful.</li>
+      <li>For any further enquiries please contact the office at <strong>+268 7810 9433</strong>.</li>
+      <li>A <strong>payment slip (scanned copy)</strong> must be attached to your application.</li>
+    </ul>
+  </div>
+
+  <div class="instr-card">
+    <h3>Admission Requirements</h3>
+    <ul>
+      <li>Consult the college for minimum admission and specific qualification requirements.</li>
+      <li>All candidates who comply with the minimum requirements are still subject to selection procedures.</li>
+      <li>EMRC offers the opportunity for qualifying individuals to apply for <strong>Recognition of Prior Learning (RPL)</strong>. You may apply for RPL if:
+        <ul style="margin-top:8px;">
+          <li>You are <strong>25 years old or older</strong></li>
+          <li>You have at least <strong>5 years of relevant work experience</strong></li>
+          <li>Your work experience is relevant to the qualification you are applying for</li>
+        </ul>
+      </li>
+      <li><strong>NB:</strong> Please submit all required information. No late applications will be accepted.</li>
+    </ul>
+  </div>
+
+  <div class="instr-card">
+    <h3>Documents to Submit with Your Application</h3>
+    <ul>
+      <li>Certified copy of your <strong>Identity Document</strong></li>
+      <li>Certified copy of your <strong>Form 5 certificate</strong> or equivalent qualification</li>
+      <li>If you are still in Form 5, your most recent marks must also be submitted</li>
+      <li>If you attended any other higher education institution — an original academic record and certificate of conduct, or certified copies of certificates/diplomas/degrees obtained previously</li>
+      <li>If the name on your certificate differs from the name on the application form, proof must be provided to explain the change in name</li>
+    </ul>
+    <div class="govsponsored" style="margin-top:18px;">
+      <h4>🎓 Government Sponsored Qualifications</h4>
+      <ul>
+        <li>BSc in Occupational Health and Safety</li>
+        <li>Bachelor of Health Science in Emergency Medical Care and Rescue</li>
+        <li>BSc in Disasters Risk Reduction &amp; Management</li>
+        <li>BSc in Public Health Management</li>
+        <li>Diploma in Emergency Medical Care and Rescue</li>
+        <li>Diploma in Public Health</li>
+        <li>Diploma in Disaster Risk Reduction &amp; Management</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="instr-card">
+    <h3>International Students</h3>
+    <ul>
+      <li>Certified copies of your passport / refugee permit / proof of residence / study permit</li>
+      <li>Your school-leaving certificate, submitted with the <strong>English translation</strong></li>
+    </ul>
+  </div>
+
+  <div class="instr-card">
+    <h3>Application Fee</h3>
+    <p style="font-size:0.88rem; color:var(--muted); margin-bottom:14px;">A <span class="fee-badge">{{ payment_details.fee }}</span> non-refundable application fee must accompany this application form.</p>
+    <p style="font-size:0.88rem; margin-bottom:14px;">Make your deposit to the bank account below, then capture the reference on the payment step of the form. Attach your proof of payment during document upload.</p>
+    <div class="bank-grid">
+      <div class="bank-item"><div class="bk-label">Bank</div><div class="bk-value">{{ payment_details.bank }}</div></div>
+      <div class="bank-item"><div class="bk-label">Account Name</div><div class="bk-value">{{ payment_details.account_name }}</div></div>
+      <div class="bank-item"><div class="bk-label">Account Type</div><div class="bk-value">{{ payment_details.account_type }}</div></div>
+      <div class="bank-item"><div class="bk-label">Branch Code</div><div class="bk-value">{{ payment_details.branch_code }}</div></div>
+      <div class="bank-item"><div class="bk-label">Account Number</div><div class="bk-value">{{ payment_details.account_number }}</div></div>
+      <div class="bank-item"><div class="bk-label">Swift Code</div><div class="bk-value">{{ payment_details.swift_code }}</div></div>
+    </div>
+    <div class="warn-box" style="margin-top:16px;">
+      <strong>⚠ Payment Reference Format</strong>
+      Use: <strong>{{ payment_details.reference_format }}</strong><br>
+      NB: Please attach a copy of the proof of payment to your application form.
+    </div>
+  </div>
+
+  <div style="text-align:center; padding: 28px 0;">
+    <a href="{{ url_for('apply_step1', school_id=school.id) }}" class="btn-start" style="display:inline-block; font-size:1.05rem; padding:16px 44px; border-radius:12px; background:var(--accent); color:#fff; font-weight:700; text-decoration:none;">
+      Start Application Now →
+    </a>
+  </div>
+</div>
+{% endblock %}

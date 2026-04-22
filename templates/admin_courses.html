@@ -1,0 +1,66 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Manage Courses{% endblock %}
+{% block header %}Manage Courses{% endblock %}
+
+{% block content %}
+  <h2>Manage Courses</h2>
+  <form method="post" action="{{ url_for('admin_courses') }}">
+      <label>School:</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}">{{ school.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Course Name:</label>
+      <input type="text" name="name" required>
+
+      <label>Course Code:</label>
+      <input type="text" name="code" required>
+
+      <button type="submit">Add Course</button>
+  </form>
+
+  <h3>Existing Courses</h3>
+  <table>
+    <tr><th>ID</th><th>School</th><th>Name</th><th>Code</th><th>Actions</th></tr>
+    {% for course in courses %}
+      <tr>
+        <td>{{ course.id }}</td>
+        <td>{{ course.school_id }}</td>
+        <td>{{ course.name }}</td>
+        <td>{{ course.code }}</td>
+        <td class="actions">
+          <a href="#edit-course-{{ course.id }}">Edit</a>
+          <a href="{{ url_for('delete_course', course_id=course.id) }}">Delete</a>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">No courses found.</td></tr>
+    {% endfor %}
+  </table>
+
+  <!-- Inline Edit Forms -->
+  {% for course in courses %}
+  <form id="edit-course-{{ course.id }}" method="POST" action="{{ url_for('edit_course', course_id=course.id) }}">
+      <h3>Edit Course: {{ course.name }}</h3>
+      <label>School:</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}" {% if school.id == course.school_id %}selected{% endif %}>{{ school.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Course Name:</label>
+      <input type="text" name="name" value="{{ course.name }}" required>
+
+      <label>Course Code:</label>
+      <input type="text" name="code" value="{{ course.code }}" required>
+
+      <button type="submit">Update Course</button>
+  </form>
+  {% endfor %}
+{% endblock %}

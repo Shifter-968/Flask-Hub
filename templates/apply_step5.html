@@ -1,0 +1,64 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 5 – Document Uploads{% endblock %}
+
+{% block extra_head %}
+<style>
+  .doc-grid { display: grid; gap: 16px; }
+  .doc-item { border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px 20px; background: #fafbfd; transition: border-color 0.2s, background 0.2s; }
+  .doc-item:hover { border-color: var(--brand); background: #f0f4ff; }
+  .doc-item.uploaded { border-color: #86efac; background: #f0fdf4; border-style: solid; }
+  .doc-name { font-size: 0.92rem; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .doc-hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
+  .doc-current { font-size: 0.8rem; color: #166534; font-weight: 600; background: #dcfce7; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 10px; }
+  .doc-req { font-size: 0.78rem; color: #e53e3e; font-weight: 600; }
+  .doc-optional { font-size: 0.78rem; color: var(--muted); }
+  input[type=file] { font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 5: Document Uploads</h2>
+  <p class="card-sub">Upload certified copies of all required documents. Accepted formats: PDF, JPG, PNG, DOC. Max 10 MB per file.</p>
+
+  <div class="warn-box" style="margin-bottom:22px;">
+    <strong>⚠ Important</strong>
+    All copies must be certified. Uncertified documents will cause your application to be unsuccessful.
+    If you cannot upload now, you may skip and return, but all documents must be present before final submission.
+  </div>
+
+  <form method="POST" action="{{ url_for('apply_step5', school_id=school.id) }}" enctype="multipart/form-data">
+    <div class="doc-grid">
+
+      {% set docs_config = [
+        ('national_id_doc',  'Certified Copy of National ID / Passport', 'Your national identity document or passport — both sides if ID card.', True),
+        ('form5_results',    'Form 5 Certificate / Results', 'SGCSE, IGCSE, GCE O-Level or equivalent. If still in Form 5, submit most recent marks.', True),
+        ('payment_slip',     'Proof of Payment (Bank Deposit Slip)', 'Scanned copy of your FNB deposit slip for the E300 application fee.', True),
+        ('certificates',     'Other Certificates / Supporting Documents', 'Any additional diplomas, RPL evidence, transcripts, or certificates of conduct.', False),
+      ] %}
+
+      {% for doc_type, label, hint, required in docs_config %}
+      {% set existing = existing_docs.get(doc_type) %}
+      <div class="doc-item {% if existing %}uploaded{% endif %}">
+        <div class="doc-name">
+          {{ label }}
+          {% if required %}<span class="doc-req"> *Required</span>{% else %}<span class="doc-optional"> (Optional)</span>{% endif %}
+        </div>
+        <div class="doc-hint">{{ hint }}</div>
+        {% if existing %}
+        <div class="doc-current">✓ Uploaded: {{ existing.original_name or 'file' }}</div>
+        <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">Select a new file below to replace it.</div>
+        {% endif %}
+        <input type="file" name="{{ doc_type }}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_step4', school_id=school.id) }}" class="btn-back">← Back</a>
+      <button type="submit" class="btn-next">Next: Payment Details →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

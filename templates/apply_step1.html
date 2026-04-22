@@ -1,0 +1,55 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 1 – Programme Selection{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 1: Programme Selection</h2>
+  <p class="card-sub">Choose the academic year, qualification and study mode you are applying for.</p>
+
+  <form method="POST" action="{{ url_for('apply_step1', school_id=school.id) }}">
+    <div class="form-grid">
+
+      <div class="field">
+        <label for="academic_year">Academic Year <span class="req">*</span></label>
+        <select name="academic_year" id="academic_year" required>
+          <option value="">— Select academic year —</option>
+          {% for yr in academic_years %}
+          <option value="{{ yr }}" {% if draft and draft.academic_year == yr %}selected{% endif %}>{{ yr }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field full">
+        <label for="qualification">Qualification / Programme <span class="req">*</span></label>
+        <select name="qualification" id="qualification" required>
+          <option value="">— Select a programme —</option>
+          {% for prog in programmes %}
+          <option value="{{ prog }}" {% if draft and draft.qualification == prog %}selected{% endif %}>{{ prog }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="section">Study Mode <span class="req">*</span></label>
+        <select name="section" id="section" required>
+          <option value="">— Select study mode —</option>
+          {% for s in sections %}
+          <option value="{{ s }}" {% if draft and draft.section == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+    </div>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_instructions', school_id=school.id) }}" class="btn-back">← Instructions</a>
+      <button type="submit" class="btn-next">Next: Personal Info →</button>
+    </div>
+  </form>
+</div>
+
+<div class="info-box">
+  <strong>Need help choosing?</strong>
+  View the <a href="https://bala268.com/images/EMRC%20MAIN%20PROSPECTUS.pdf" target="_blank" rel="noopener" style="color:var(--brand); font-weight:600;">EMRC Prospectus</a> for full programme details and entrance requirements.
+</div>
+{% endblock %}

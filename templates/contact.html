@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Contact Us - Smart School Hub{% endblock %}
+{% block content %}
+<style>
+    .contact-layout {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 18px;
+    }
+    .contact-card {
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 16px;
+        padding: 18px;
+    }
+    .contact-item {
+        padding: 10px 0;
+        border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
+        font-size: 0.95rem;
+        color: #334155;
+    }
+    .contact-item:last-child {
+        border-bottom: none;
+    }
+    .contact-item strong {
+        display: block;
+        color: #0f172a;
+        margin-bottom: 3px;
+    }
+    .contact-form .form-label {
+        font-weight: 700;
+        color: #334155;
+        font-size: 0.86rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .contact-form textarea {
+        min-height: 132px;
+    }
+    @media (max-width: 900px) {
+        .contact-layout { grid-template-columns: 1fr; }
+    }
+</style>
+
+<h1>Contact Us</h1>
+<p class="lead">Have a question, partnership idea, or onboarding request? Reach out and we will assist you.</p>
+
+<section class="contact-layout">
+  <article class="contact-card">
+    <div class="contact-item">
+      <strong>📧 Email</strong>
+      ironpixel@gmail.com
+    </div>
+    <div class="contact-item">
+      <strong>📞 Phone</strong>
+      +268 7624 0452
+    </div>
+    <div class="contact-item">
+      <strong>🏢 Address</strong>
+      Limkokwing University Campus, Mbabane, Eswatini
+    </div>
+    <div class="contact-item">
+      <strong>Office Hours</strong>
+      Monday - Friday, 8:00 AM to 5:00 PM
+    </div>
+  </article>
+
+  <article class="contact-card">
+    <form class="contact-form" method="post" action="{{ url_for('submit_main_contact_message') }}">
+      <div class="mb-3">
+        <label for="name" class="form-label">Your Name</label>
+        <input type="text" class="form-control" id="name" name="name" placeholder="Enter your full name" required>
+      </div>
+      <div class="mb-3">
+        <label for="email" class="form-label">Your Email</label>
+        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email address" required>
+      </div>
+      <div class="mb-3">
+        <label for="phone" class="form-label">Phone (optional)</label>
+        <input type="text" class="form-control" id="phone" name="phone" placeholder="Enter your phone number">
+      </div>
+      <div class="mb-3">
+        <label for="message" class="form-label">Message</label>
+        <textarea class="form-control" id="message" name="message" placeholder="Write your message" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Send Message</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

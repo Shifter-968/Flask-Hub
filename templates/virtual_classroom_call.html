@@ -1,0 +1,128 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Virtual Classroom Call" %}
+{% set role = "Classroom" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .call-shell {
+        display: grid;
+        gap: 14px;
+        max-width: 1200px;
+    }
+    .call-card {
+        background: #ffffff;
+        border: 1px solid #dbe2f5;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+    .call-meta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: #64748b;
+        font-size: 0.86rem;
+    }
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 0.74rem;
+        font-weight: 800;
+        border: 1px solid;
+    }
+    .pill.live { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+    .pill.scheduled { color: #92400e; background: #ffedd5; border-color: #fed7aa; }
+    .pill.ended { color: #334155; background: #e2e8f0; border-color: #cbd5e1; }
+    .call-frame-wrap {
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0f172a;
+    }
+    .call-frame {
+        width: 100%;
+        min-height: 74vh;
+        border: none;
+        background: #0f172a;
+    }
+</style>
+
+<div class="call-shell">
+    <section class="call-card">
+        <h1 style="margin:0 0 8px; font-size:1.45rem; color:#0f172a;">{{ call_title }}</h1>
+        <div class="call-meta">
+            <span>Classroom: {{ classroom.name if classroom else 'Classroom' }}</span>
+            <span>Host: {{ host_name }}</span>
+            <span>Created: {{ (created_at or '')[:16].replace('T', ' ') if created_at else 'N/A' }}</span>
+            <span>Room: {{ room_name }}</span>
+            {% if scheduled_start %}<span>Start: {{ scheduled_start[:16].replace('T', ' ') }}</span>{% endif %}
+            {% if scheduled_end %}<span>End: {{ scheduled_end[:16].replace('T', ' ') }}</span>{% endif %}
+            <span class="pill {{ call_status }}">{{ call_status|upper }}</span>
+        </div>
+        <p style="margin:10px 0 0; color:#475569;">This call runs inside your app using an embedded video-conference room. Share the call password privately with participants.</p>
+        <div style="margin-top:12px;">
+            <a href="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" class="crystal-button" style="margin:0;">Back to Classroom</a>
+        </div>
+
+        {% if is_call_host and call_status != 'ended' %}
+        <div style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <form method="post" action="{{ url_for('classroom_virtual_call_host_control', classroom_id=classroom.id, call_post_id=call_post_id) }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input type="hidden" name="action" value="rotate_password">
+                <input type="password" name="new_call_password" minlength="4" placeholder="New meeting password" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:220px;" required>
+                <button type="submit" class="crystal-button" style="margin:0; padding:8px 14px;">Rotate Password</button>
+            </form>
+            <form method="post" action="{{ url_for('classroom_virtual_call_host_control', classroom_id=classroom.id, call_post_id=call_post_id) }}" style="display:flex;">
+                <input type="hidden" name="action" value="end_call">
+                <button type="submit" class="crystal-button" style="margin:0; padding:8px 14px; background:#dc2626; border-color:#dc2626; color:#fff;">End Meeting</button>
+            </form>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="call-card">
+        <div class="call-frame-wrap">
+            <iframe
+                class="call-frame"
+                allow="camera; microphone; display-capture; fullscreen"
+                src="https://meet.jit.si/{{ room_name }}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&interfaceConfig.DISABLE_JOIN_LEAVE_NOTIFICATIONS=true"
+                title="Virtual Classroom Call"
+            ></iframe>
+        </div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const attendanceUrl = "{{ url_for('classroom_virtual_call_attendance', classroom_id=classroom.id, call_post_id=call_post_id) }}";
+
+    async function sendEvent(eventName) {
+        try {
+            await fetch(attendanceUrl, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({event: eventName}),
+                keepalive: true,
+            });
+        } catch (err) {
+            // best-effort only
+        }
+    }
+
+    const leavePayload = JSON.stringify({event: "leave"});
+    window.addEventListener("beforeunload", () => {
+        try {
+            navigator.sendBeacon(attendanceUrl, new Blob([leavePayload], {type: "application/json"}));
+        } catch (err) {
+            // ignore
+        }
+    });
+
+    setInterval(() => {
+        sendEvent("heartbeat");
+    }, 45000);
+})();
+</script>
+{% endblock %}

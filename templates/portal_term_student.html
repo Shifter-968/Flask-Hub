@@ -1,0 +1,586 @@
+{% extends "base_dashboard.html" %}
+{% set title = student_name ~ " – " ~ ('Semester' if is_tertiary else 'Term') ~ " Report" %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .breadcrumb {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        font-size: 0.86rem; color: #94a3b8; margin-bottom: 18px;
+    }
+    .breadcrumb a { color: #3b82f6; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    /* Student header */
+    .student-header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 20px; margin-bottom: 28px; flex-wrap: wrap;
+    }
+    .student-header-left { display: flex; align-items: center; gap: 18px; }
+    .big-avatar {
+        width: 62px; height: 62px; border-radius: 50%;
+        background: linear-gradient(135deg, #10b981, #059669);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 1.6rem; flex-shrink: 0;
+    }
+    .student-header-name { font-size: 1.6rem; font-weight: 700; color: #1e293b; margin: 0 0 4px; }
+    .student-header-meta { color: #64748b; font-size: 0.88rem; }
+    .btn-add-result {
+        padding: 10px 22px; border-radius: 11px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white; font-weight: 700; font-size: 0.9rem;
+        border: none; cursor: pointer;
+        box-shadow: 0 4px 14px rgba(16,185,129,0.3);
+        transition: opacity 0.2s, transform 0.2s;
+        white-space: nowrap;
+    }
+    .btn-add-result:hover { opacity: 0.87; transform: translateY(-1px); }
+
+    /* GPA summary */
+    .gpa-bar {
+        display: flex; gap: 20px; flex-wrap: wrap;
+        background: white; border-radius: 16px; padding: 20px 24px;
+        box-shadow: 0 3px 16px rgba(30,41,59,0.07); border: 1px solid #e2e8f0;
+        margin-bottom: 28px;
+    }
+    .gpa-item { display: flex; flex-direction: column; gap: 4px; }
+    .gpa-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600; }
+    .gpa-value { font-size: 1.45rem; font-weight: 700; color: #1e293b; }
+    .gpa-value.good { color: #16a34a; }
+    .gpa-value.ok { color: #d97706; }
+    .gpa-value.poor { color: #dc2626; }
+    .gpa-divider { width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 4px; }
+
+    /* Report card table */
+    .report-shell {
+        background: white; border-radius: 18px;
+        box-shadow: 0 4px 20px rgba(30,41,59,0.08);
+        border: 1px solid #e2e8f0; overflow: hidden; margin-bottom: 20px;
+    }
+    .report-shell-header {
+        padding: 18px 24px; border-bottom: 1px solid #e2e8f0;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .report-shell-title { font-weight: 700; font-size: 1.0rem; color: #1e293b; }
+    .report-meta { font-size: 0.82rem; color: #94a3b8; }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th {
+        padding: 10px 18px; text-align: left;
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;
+        color: #94a3b8; font-weight: 600;
+        background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+    }
+    .report-table td {
+        padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem; color: #334155; vertical-align: top;
+    }
+    .report-table tr:last-child td { border-bottom: none; }
+    .report-table tr:hover td { background: #fafbff; }
+    .subject-name { font-weight: 700; color: #1e293b; }
+    .score-cell { font-weight: 700; color: #1e293b; white-space: nowrap; }
+    .symbol-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border-radius: 10px;
+        font-weight: 800; font-size: 1rem; letter-spacing: -0.5px;
+    }
+    .sym-A, .sym-HD { background: #dcfce7; color: #16a34a; }
+    .sym-B, .sym-D  { background: #eff6ff; color: #2563eb; }
+    .sym-C, .sym-CR { background: #fef9c3; color: #ca8a04; }
+    .sym-P          { background: #fff7ed; color: #c2410c; }
+    .sym-F          { background: #fef2f2; color: #dc2626; }
+    .comment-cell { color: #64748b; font-style: italic; font-size: 0.85rem; }
+    .delete-btn {
+        background: none; border: none; cursor: pointer;
+        color: #fca5a5; font-size: 1rem; padding: 4px 6px;
+        border-radius: 6px; transition: background 0.18s, color 0.18s; line-height: 1;
+    }
+    .delete-btn:hover { background: #fef2f2; color: #dc2626; }
+
+    /* Add result modal */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(15,23,42,0.6); backdrop-filter: blur(5px);
+        z-index: 8000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 22px;
+        padding: 34px 30px 28px; width: min(520px, 95vw);
+        box-shadow: 0 28px 75px rgba(15,23,42,0.22);
+        position: relative; max-height: 92vh; overflow-y: auto;
+    }
+    .modal-close {
+        position: absolute; top: 16px; right: 16px;
+        background: #f1f5f9; border: none; border-radius: 50%;
+        width: 34px; height: 34px; cursor: pointer; font-size: 1.1rem;
+        display: flex; align-items: center; justify-content: center;
+        color: #64748b; transition: background 0.2s;
+    }
+    .modal-close:hover { background: #e2e8f0; }
+    .modal-title { font-size: 1.2rem; font-weight: 700; color: #1e293b; margin: 0 0 22px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-group label { font-weight: 600; font-size: 0.8rem; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input, .form-group select, .form-group textarea {
+        padding: 9px 12px; border-radius: 9px; border: 1.5px solid #e2e8f0;
+        font-size: 0.9rem; color: #1e293b; background: #f8fafc;
+        transition: border-color 0.2s, background 0.2s; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none; border-color: #10b981; background: white;
+    }
+    .form-group textarea { resize: vertical; min-height: 76px; }
+    .hint-text { font-size: 0.76rem; color: #94a3b8; margin-top: 3px; }
+    .btn-submit-modal {
+        width: 100%; padding: 13px; border-radius: 11px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white; font-weight: 700; font-size: 0.95rem;
+        border: none; cursor: pointer; margin-top: 6px;
+        transition: opacity 0.2s; font-family: inherit;
+    }
+    .btn-submit-modal:hover { opacity: 0.87; }
+    .symbol-preview-box {
+        margin-top: 12px; padding: 12px 16px; border-radius: 10px;
+        background: #f0fdf4; border: 1px solid #bbf7d0;
+        display: none;
+        font-size: 0.9rem; color: #15803d; font-weight: 600;
+    }
+
+    /* AI Draft button */
+    .btn-ai-draft {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 9px;
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+        color: white; font-weight: 700; font-size: 0.78rem;
+        border: none; cursor: pointer; white-space: nowrap;
+        transition: opacity 0.2s, transform 0.18s;
+        box-shadow: 0 3px 10px rgba(109,40,217,0.25);
+        letter-spacing: 0.2px;
+    }
+    .btn-ai-draft:hover { opacity: 0.87; transform: translateY(-1px); }
+    .btn-ai-draft:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .ai-field-row { display: flex; flex-direction: column; gap: 6px; }
+    .ai-field-row-inner { display: flex; gap: 8px; align-items: flex-end; }
+    .ai-field-row-inner textarea,
+    .ai-field-row-inner input[type=text] { flex: 1; }
+</style>
+
+<div class="breadcrumb">
+    <a href="{{ url_for('portal_dashboard', school_id=school_id) }}">📊 Portal</a>
+    <span>›</span>
+    <a href="{{ url_for('portal_term_results', school_id=school_id) }}">
+        {{ 'Semester' if is_tertiary else 'Term' }} Results
+    </a>
+    <span>›</span>
+    <a href="{{ url_for('portal_term_classroom', school_id=school_id, classroom_id=classroom_id) }}">
+        {{ classroom.name if classroom else 'Classroom' }}
+    </a>
+    <span>›</span>
+    <span>{{ student_name }}</span>
+</div>
+
+{% if cycle_options %}
+<form method="GET" style="margin:0 0 16px;display:flex;gap:10px;align-items:center;">
+    <label style="font-weight:700;color:#334155;font-size:0.86rem;">Cycle:</label>
+    <select name="cycle" onchange="this.form.submit()" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;">
+        {% for opt in cycle_options %}
+        <option value="{{ opt.key }}" {% if opt.key == selected_cycle %}selected{% endif %}>{{ opt.label }} · {{ opt.year }}</option>
+        {% endfor %}
+    </select>
+</form>
+{% endif %}
+
+<!-- Student header -->
+<div class="student-header">
+    <div class="student-header-left">
+        <div class="big-avatar">{{ student_name[0].upper() if student_name else '?' }}</div>
+        <div>
+            <div class="student-header-name">{{ student_name }}</div>
+            <div class="student-header-meta">
+                {{ classroom.name if classroom else '' }}
+                &nbsp;&bull;&nbsp; {{ student_type|title }}
+                {% if student_info.get('course') %}&nbsp;&bull;&nbsp; {{ student_info.course }}{% endif %}
+                {% if student_info.get('grade') %}&nbsp;&bull;&nbsp; Grade {{ student_info.grade }}{% endif %}
+            </div>
+        </div>
+    </div>
+    <button class="btn-add-result" onclick="openModal()">+ Add {{ 'Semester' if is_tertiary else 'Term' }} Result</button>
+</div>
+
+<!-- GPA / CGPA Summary Bar -->
+<div class="gpa-bar">
+    <div class="gpa-item">
+        <span class="gpa-label">Subjects Recorded</span>
+        <span class="gpa-value">{{ term_results | length }}</span>
+    </div>
+    {% if term_results %}
+    <div class="gpa-divider"></div>
+    <div class="gpa-item">
+        <span class="gpa-label">{{ 'CGPA' if is_tertiary else 'GPA' }}</span>
+        <span class="gpa-value {% if gpa >= 3.0 %}good{% elif gpa >= 2.0 %}ok{% else %}poor{% endif %}">
+            {{ gpa }}
+        </span>
+    </div>
+    <div class="gpa-divider"></div>
+    <div class="gpa-item" style="margin-left:4px;">
+        <span class="gpa-label">Grading Scale</span>
+        <span style="font-size:0.75rem;color:#64748b;line-height:1.7;margin-top:4px;">
+            {% if is_tertiary %}
+            HD (≥75%) = 4.0 &nbsp; D (≥65%) = 3.0 &nbsp; CR (≥55%) = 2.0 &nbsp; P (≥45%) = 1.0 &nbsp; F = 0.0
+            {% else %}
+            A (≥80%) = 4.0 &nbsp; B (≥70%) = 3.0 &nbsp; C (≥60%) = 2.0 &nbsp; D (≥50%) = 1.0 &nbsp; F = 0.0
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Report Card Table -->
+{% if term_results %}
+<div class="report-shell">
+    <div class="report-shell-header">
+        <div class="report-shell-title">
+            🏆 {{ ('Semester' if is_tertiary else 'Term') }} Report Card
+        </div>
+        {% set first = term_results[0] %}
+        {% if first.term_label or first.academic_year %}
+        <div class="report-meta">
+            {% if first.term_label %}{{ first.term_label }}{% endif %}
+            {% if first.academic_year %} · {{ first.academic_year }}{% endif %}
+        </div>
+        {% endif %}
+    </div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Subject / Module</th>
+                <th>Mark</th>
+                <th>%</th>
+                <th>Symbol</th>
+                <th>GPA Pts</th>
+                <th>Comment</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in term_results %}
+            {% set sym = r.symbol or 'F' %}
+            <tr>
+                <td><span class="subject-name">{{ r.subject_name }}</span></td>
+                <td class="score-cell">
+                    {{ r.overall_mark | int if r.overall_mark == r.overall_mark | int else r.overall_mark }}
+                    / {{ r.total_possible | int if r.total_possible == r.total_possible | int else r.total_possible }}
+                </td>
+                <td class="score-cell">{{ r.percentage }}%</td>
+                <td>
+                    <span class="symbol-badge sym-{{ sym }}">{{ sym }}</span>
+                </td>
+                <td style="font-weight:700;color:#1e293b;">
+                    {% if sym in ['A','HD'] %}4.0
+                    {% elif sym in ['B','D'] %}3.0
+                    {% elif sym in ['C','CR'] %}2.0
+                    {% elif sym == 'P' %}1.0
+                    {% else %}0.0
+                    {% endif %}
+                </td>
+                <td class="comment-cell">{{ r.teacher_comment or '—' }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('portal_term_student', school_id=school_id, classroom_id=classroom_id, student_id=student_id, student_type=student_type) }}"
+                          onsubmit="return confirm('Delete this result?')">
+                        <input type="hidden" name="action" value="delete_term_result">
+                        <input type="hidden" name="result_id" value="{{ r.id }}">
+                        <button type="submit" class="delete-btn" title="Delete">🗑</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background:#f8fafc;font-weight:700;border-top:2px solid #e2e8f0;">
+                <td colspan="4" style="padding:12px 18px;color:#475569;font-size:0.85rem;text-align:right;">
+                    {{ 'CGPA' if is_tertiary else 'GPA' }}:
+                </td>
+                <td colspan="3" style="padding:12px 18px;font-size:1.1rem;
+                    color:{% if gpa >= 3.0 %}#16a34a{% elif gpa >= 2.0 %}#d97706{% else %}#dc2626{% endif %};">
+                    {{ gpa }}
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:#94a3b8;background:white;border-radius:18px;border:1px dashed #e2e8f0;">
+    <div style="font-size:2.8rem;">🏆</div>
+    <strong>No results recorded yet</strong>
+    <p style="margin:10px 0 0;font-size:0.92rem;">
+        Click <strong>+ Add {{ 'Semester' if is_tertiary else 'Term' }} Result</strong> above to start building the report card.
+    </p>
+</div>
+{% endif %}
+
+<div class="report-shell" style="margin-top:20px;">
+    <div class="report-shell-header">
+        <div class="report-shell-title">📄 Published {{ 'Semester' if is_tertiary else 'Term' }} Reports</div>
+    </div>
+    <div style="padding:16px 20px;">
+        {% if report_docs %}
+        <div style="display:grid;gap:10px;">
+            {% for doc in report_docs %}
+            <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;">
+                <div>
+                    <div style="font-weight:700;color:#1e293b;">{{ doc.term_label or 'Cycle' }} · {{ doc.academic_year or 'Year' }}</div>
+                    <div style="font-size:0.82rem;color:#64748b;">Overall: {{ doc.overall_percentage or 0 }}%{% if doc.teacher_comment %} · {{ doc.teacher_comment }}{% endif %}</div>
+                </div>
+                <a href="{{ url_for('portal_report_view', report_id=doc.id) }}" style="padding:7px 12px;border-radius:8px;background:#0ea5e9;color:#fff;text-decoration:none;font-size:0.8rem;font-weight:700;">Open</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="margin:0;color:#94a3b8;">No reports published for this student yet.</p>
+        {% endif %}
+
+        <form method="POST" style="margin-top:16px;border-top:1px dashed #cbd5e1;padding-top:14px;display:grid;gap:10px;">
+            <input type="hidden" name="action" value="publish_term_report">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <input type="text" name="term_label" placeholder="{{ cycle_meta.cycle_label }}" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;">
+                <input type="text" name="academic_year" placeholder="{{ cycle_meta.academic_year }}" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:start;">
+                <input type="number" step="0.01" min="0" max="100" name="overall_percentage" placeholder="Overall % (optional)" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;">
+                <div class="ai-field-row">
+                    <textarea name="report_comment" id="reportCommentField" rows="3"
+                              placeholder="{{ 'Lecturer' if is_tertiary else 'Teacher' }} summary comment…"
+                              style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;"></textarea>
+                    <button type="button" id="aiOverallBtn" class="btn-ai-draft" onclick="generateOverallComment()">
+                        ✨ AI Draft Comment
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit-modal" style="max-width:320px;">Publish {{ 'Semester' if is_tertiary else 'Term' }} Report Record</button>
+        </form>
+    </div>
+</div>
+
+<!-- Add Result Modal -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <div class="modal-title">🏆 Add {{ 'Semester' if is_tertiary else 'Term' }} Result – {{ student_name }}</div>
+
+        <form method="POST">
+            <input type="hidden" name="action" value="record_term_result">
+
+            <div class="form-group">
+                <label>Subject / Module</label>
+                <input type="text" name="subject_name"
+                       list="subjects-datalist"
+                       placeholder="Type or select a subject / module…"
+                       required autocomplete="off">
+                <input type="hidden" name="subject_ref_id" id="subjectRefId" value="">
+                <input type="hidden" name="subject_ref_type" id="subjectRefType" value="">
+                <datalist id="subjects-datalist">
+                    {% for s in subject_options %}
+                    <option value="{{ s.name }}" data-id="{{ s.id }}" data-kind="{{ s.kind }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Overall Mark</label>
+                    <input type="number" name="overall_mark" step="0.5" min="0"
+                           id="overallScored" oninput="calcSymbol()" placeholder="e.g. 68" required>
+                </div>
+                <div class="form-group">
+                    <label>Out of (Total)</label>
+                    <input type="number" name="total_possible" step="0.5" min="1" value="100"
+                           id="overallTotal" oninput="calcSymbol()" required>
+                </div>
+            </div>
+
+            <div id="symbolPreview" class="symbol-preview-box"></div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>{{ 'Semester' if is_tertiary else 'Term' }} Label</label>
+                    <input type="text" name="term_label"
+                           placeholder="{{ cycle_meta.cycle_label }}">
+                </div>
+                <div class="form-group">
+                    <label>Academic Year</label>
+                    <input type="text" name="academic_year"
+                           placeholder="{{ cycle_meta.academic_year }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>{{ 'Lecturer' if is_tertiary else 'Teacher' }} Comment <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+                <textarea name="teacher_comment" id="subjectCommentField"
+                          placeholder="Overall {{ 'semester' if is_tertiary else 'term' }} performance comment…"></textarea>
+                <button type="button" id="aiSubjectBtn" class="btn-ai-draft" style="margin-top:6px;" onclick="generateSubjectComment()">
+                    ✨ AI Draft Comment
+                </button>
+            </div>
+
+            <button type="submit" class="btn-submit-modal">
+                Save {{ 'Semester' if is_tertiary else 'Term' }} Result
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+var isTertiary = {{ 'true' if is_tertiary else 'false' }};
+var studentName = {{ student_name | tojson }};
+var currentGpa  = {{ gpa | tojson }};
+
+function openModal() {
+    document.getElementById('addModal').classList.add('open');
+}
+function closeModal() {
+    document.getElementById('addModal').classList.remove('open');
+}
+document.getElementById('addModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+// ── AI Comment Generation ──────────────────────────────────────────
+function _collectTermResults() {
+    var rows = document.querySelectorAll('.report-table tbody tr');
+    var subjects = [];
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            subjects.push({
+                name:   (cells[0].querySelector('.subject-name') || cells[0]).textContent.trim(),
+                pct:    parseFloat(cells[2].textContent),
+                symbol: (cells[3].querySelector('.symbol-badge') || cells[3]).textContent.trim()
+            });
+        }
+    });
+    return subjects;
+}
+
+async function generateOverallComment() {
+    var btn   = document.getElementById('aiOverallBtn');
+    var field = document.getElementById('reportCommentField');
+    var subjects = _collectTermResults();
+    if (!subjects.length) {
+        alert('No results recorded yet. Add at least one subject result first.');
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating…';
+    try {
+        var resp = await fetch('/ai/generate-report-comment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                student_name: studentName,
+                subjects:     subjects,
+                gpa:          currentGpa,
+                is_tertiary:  isTertiary,
+                mode:         'overall'
+            })
+        });
+        var data = await resp.json();
+        if (data.comment) {
+            field.value = data.comment;
+            field.style.border = '1.5px solid #8b5cf6';
+            setTimeout(function(){ field.style.border = ''; }, 2000);
+        } else {
+            alert('⚠️ ' + (data.error || 'Generation failed. Try again.'));
+        }
+    } catch(e) {
+        alert('Could not reach the AI service. Check your connection.');
+    }
+    btn.disabled = false;
+    btn.textContent = '✨ AI Draft Comment';
+}
+
+async function generateSubjectComment() {
+    var btn         = document.getElementById('aiSubjectBtn');
+    var field       = document.getElementById('subjectCommentField');
+    var subjectName = document.querySelector('input[name="subject_name"]').value.trim();
+    var scored      = document.getElementById('overallScored').value;
+    var total       = document.getElementById('overallTotal').value;
+    if (!subjectName) {
+        alert('Enter the subject name first, then click AI Draft.');
+        return;
+    }
+    var pct = (scored && total && parseFloat(total) > 0)
+        ? Math.round((parseFloat(scored) / parseFloat(total)) * 1000) / 10
+        : null;
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating…';
+    try {
+        var resp = await fetch('/ai/generate-report-comment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                student_name: studentName,
+                mode:         'subject',
+                subjects:     [{ name: subjectName, pct: pct, scored: scored, total: total }],
+                is_tertiary:  isTertiary
+            })
+        });
+        var data = await resp.json();
+        if (data.comment) {
+            field.value = data.comment;
+            field.style.border = '1.5px solid #8b5cf6';
+            setTimeout(function(){ field.style.border = ''; }, 2000);
+        } else {
+            alert('⚠️ ' + (data.error || 'Generation failed. Try again.'));
+        }
+    } catch(e) {
+        alert('Could not reach the AI service. Check your connection.');
+    }
+    btn.disabled = false;
+    btn.textContent = '✨ AI Draft Comment';
+}
+
+function calcSymbol() {
+    var scored = parseFloat(document.getElementById('overallScored').value);
+    var total = parseFloat(document.getElementById('overallTotal').value);
+    var box = document.getElementById('symbolPreview');
+    if (isNaN(scored) || isNaN(total) || total <= 0) { box.style.display = 'none'; return; }
+    var pct = Math.round((scored / total) * 1000) / 10;
+    var sym = '';
+    if (isTertiary) {
+        if (pct >= 75)       sym = 'HD – High Distinction';
+        else if (pct >= 65)  sym = 'D – Distinction';
+        else if (pct >= 55)  sym = 'CR – Credit';
+        else if (pct >= 45)  sym = 'P – Pass';
+        else                 sym = 'F – Fail';
+    } else {
+        if (pct >= 80)       sym = 'A – Distinction';
+        else if (pct >= 70)  sym = 'B – Merit';
+        else if (pct >= 60)  sym = 'C – Credit';
+        else if (pct >= 50)  sym = 'D – Pass';
+        else                 sym = 'F – Fail';
+    }
+    box.textContent = pct + '% → ' + sym;
+    box.style.display = 'block';
+    box.style.background = pct >= 50 ? '#f0fdf4' : '#fef2f2';
+    box.style.borderColor = pct >= 50 ? '#bbf7d0' : '#fecaca';
+    box.style.color = pct >= 50 ? '#15803d' : '#dc2626';
+}
+
+document.querySelector('input[name="subject_name"]').addEventListener('input', function() {
+    var list = document.getElementById('subjects-datalist');
+    var refId = document.getElementById('subjectRefId');
+    var refType = document.getElementById('subjectRefType');
+    refId.value = '';
+    refType.value = '';
+    var value = this.value;
+    list.querySelectorAll('option').forEach(function(opt) {
+        if (opt.value === value) {
+            refId.value = opt.getAttribute('data-id') || '';
+            refType.value = opt.getAttribute('data-kind') || '';
+        }
+    });
+});
+</script>
+{% endblock %}

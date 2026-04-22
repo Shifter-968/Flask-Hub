@@ -1,0 +1,808 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Student Dashboard" %}
+{% set role = "Student" %}
+{% set tabs = ["Announcements", "Events", "Classroom", "Portal", "AI"] %}
+
+{% block content %}
+<style>
+    .dashboard-section {
+        background: #ffffff;
+        border: 1px solid #d9e0f2;
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 24px;
+        box-shadow: 0 12px 30px rgba(30, 41, 59, 0.10);
+    }
+    .section-header {
+        margin: 0 0 14px;
+        font-size: 1.28rem;
+        font-weight: 900;
+        color: #27325f;
+        letter-spacing: 0.02em;
+    }
+
+    .announce-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 12px;
+    }
+    .announce-card {
+        border: 1px solid #d7def3;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #f9fbff;
+        box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08);
+    }
+    .announce-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 12px;
+        background: linear-gradient(90deg, #2350bf, #4b3dd1 60%, #6a48ff);
+        color: #eef2ff;
+        font-weight: 800;
+    }
+    .announce-date {
+        font-size: 0.72rem;
+        font-weight: 700;
+        opacity: 0.9;
+    }
+    .announce-body {
+        padding: 12px;
+        color: #334155;
+        font-size: 0.9rem;
+        min-height: 90px;
+    }
+    .announce-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-top: 1px solid #e6ebfb;
+    }
+    .pill {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 0.7rem;
+        font-weight: 800;
+    }
+    .pill-high { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; }
+    .pill-normal { color: #1d4ed8; background: #dbeafe; border: 1px solid #bfdbfe; }
+    .pill-expiry { color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; }
+    .announce-btn {
+        background: #e91e63;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 0.75rem;
+        border-radius: 999px;
+        padding: 6px 10px;
+    }
+
+    .calendar-shell {
+        border: 1px solid #d8def4;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #f7f9ff;
+    }
+    .calendar-head {
+        padding: 14px 18px;
+        background: linear-gradient(90deg, #2f3ca8, #4f4bda 55%, #5f77ff);
+        color: #eef2ff;
+        font-size: 1.2rem;
+        font-weight: 900;
+        text-align: center;
+        letter-spacing: 0.02em;
+    }
+    .calendar-body {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 14px;
+        padding: 14px;
+    }
+    .upcoming-box {
+        background: #ffffff;
+        border: 1px solid #dbe2f5;
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .upcoming-box h4 { margin: 0 0 10px; color: #2d3a72; font-size: 1rem; }
+    .upcoming-item { border-top: 1px solid #ecf0fb; padding: 8px 0; }
+    .upcoming-item:first-of-type { border-top: none; }
+    .upcoming-title { font-weight: 800; color: #334155; font-size: 0.88rem; }
+    .upcoming-date { font-size: 0.78rem; color: #64748b; }
+
+    .month-label {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #2d3a72;
+        margin-bottom: 8px;
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        border: 1px solid #dbe2f5;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #fff;
+    }
+    .day-name, .day-cell {
+        border-right: 1px solid #edf2ff;
+        border-bottom: 1px solid #edf2ff;
+        min-height: 50px;
+        padding: 6px;
+    }
+    .day-name {
+        min-height: 36px;
+        background: #f3f6ff;
+        color: #334155;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-align: center;
+    }
+    .day-cell:nth-child(7n), .day-name:nth-child(7n) { border-right: none; }
+    .day-num { font-size: 0.8rem; font-weight: 700; color: #475569; }
+    .event-chip {
+        margin-top: 4px;
+        font-size: 0.68rem;
+        color: #fff;
+        font-weight: 800;
+        border-radius: 6px;
+        padding: 3px 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .classrooms-shell {
+        width: 100%;
+        margin-top: 14px;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(0,0,0,0.08);
+    }
+    .classrooms-shell h3 {
+        margin: 0 0 12px;
+        color: #1f2937;
+    }
+    .classroom-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+    }
+    .classroom-item {
+        background: rgba(255, 255, 255, 0.86);
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.42);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .classroom-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+    }
+    .classroom-link {
+        text-decoration: none;
+        color: #1f2937;
+        display: block;
+        transition: transform 0.2s ease;
+    }
+    .classroom-code {
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 5px;
+    }
+    .no-data {
+        text-align: center;
+        color: #7f8c8d;
+        font-style: italic;
+        padding: 20px;
+    }
+    .crystal-button {
+        background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3));
+        border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 25px;
+        padding: 12px 25px;
+        color: #2c3e50;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-block;
+        margin: 10px 5px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .crystal-button:hover {
+        background: linear-gradient(45deg, rgba(255,255,255,0.2), rgba(255,255,255,0.4));
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .relaxed-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 100%;
+    }
+    .study-bot-shell {
+        border: 1px solid #d6def5;
+        border-radius: 14px;
+        background: linear-gradient(145deg, #f7fbff 0%, #edf4ff 58%, #f7faff 100%);
+        padding: 14px;
+        box-shadow: 0 12px 28px rgba(37, 99, 235, 0.11);
+    }
+    .study-bot-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .study-bot-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        background: radial-gradient(circle at 30% 30%, #38bdf8, #2563eb 58%, #1e40af);
+        box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.18);
+    }
+    .study-bot-badge {
+        margin-left: auto;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        border: 1px solid #c7d2fe;
+        color: #3730a3;
+        background: #eef2ff;
+    }
+    .study-bot-controls {
+        display: grid;
+        grid-template-columns: 1fr 170px;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .study-bot-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .study-bot-btn {
+        border: 1px solid #c5d2f6;
+        background: #ffffff;
+        color: #2b3b78;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .study-bot-btn.primary {
+        background: linear-gradient(90deg, #3c4ed2, #5c50f0);
+        color: #ffffff;
+        border-color: #4150d6;
+    }
+    .study-bot-output {
+        margin-top: 10px;
+        border: 1px solid #dce3f8;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 12px;
+        min-height: 120px;
+        white-space: pre-wrap;
+        color: #1f2a52;
+        line-height: 1.55;
+    }
+    .study-bot-meta {
+        margin-top: 8px;
+        color: #64748b;
+        font-size: 0.82rem;
+    }
+    .study-bot-subcontrols {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    .study-bot-history {
+        margin-top: 10px;
+        border: 1px solid #dce3f8;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 10px;
+        max-height: 220px;
+        overflow-y: auto;
+    }
+    .study-bot-history-item {
+        border-bottom: 1px solid #ebf0fc;
+        padding: 8px 0;
+    }
+    .study-bot-history-item:last-child {
+        border-bottom: none;
+    }
+    .study-bot-weekly {
+        margin-top: 10px;
+        border: 1px solid #dce3f8;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 10px;
+    }
+    .mobile-events-list {
+        display: none;
+        margin-top: 10px;
+    }
+    .mobile-event-card {
+        border: 1px solid #e0e7ff;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    @media (max-width: 980px) {
+        .calendar-body { grid-template-columns: 1fr; }
+        .study-bot-controls { grid-template-columns: 1fr; }
+        .calendar-grid { display: none; }
+        .month-label { display: none; }
+        .mobile-events-list { display: block; }
+    }
+</style>
+
+<div class="relaxed-layout">
+    <section id="announcements" class="dashboard-section">
+        <h2 class="section-header">Announcements</h2>
+        {% if announcements %}
+            <div class="announce-grid">
+                {% for ann in announcements %}
+                <article class="announce-card">
+                    <header class="announce-head">
+                        <span>{{ ann.title }}</span>
+                        <span class="announce-date">{{ ann.created_at[:10] if ann.created_at else 'N/A' }}</span>
+                    </header>
+                    <div class="announce-body">{{ ann.content }}</div>
+                    <footer class="announce-footer">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            {% if (ann.alert_level or 'normal') == 'high' %}
+                                <span class="pill pill-high">HIGH ALERT</span>
+                            {% else %}
+                                <span class="pill pill-normal">NORMAL</span>
+                            {% endif %}
+                            {% if ann.expires_at %}
+                                <span class="pill pill-expiry">Expires {{ ann.expires_at[:10] }}</span>
+                            {% endif %}
+                        </div>
+                        <a href="#" class="announce-btn">View Details</a>
+                    </footer>
+                </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-data">No announcements yet. Stay tuned!</div>
+        {% endif %}
+    </section>
+
+    <section id="events" class="dashboard-section">
+        <div class="calendar-shell">
+            <div class="calendar-head">School Calendar</div>
+            <div class="calendar-body">
+                <aside class="upcoming-box">
+                    <h4>Upcoming Events</h4>
+                    <div id="upcomingEvents"></div>
+                </aside>
+                <div>
+                    <div id="monthLabel" class="month-label"></div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                    <div id="mobileEventsList" class="mobile-events-list"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="classrooms" class="dashboard-section">
+        <h2 class="section-header">🏫 Classrooms</h2>
+        <div class="classrooms-shell">
+            <h3>Available Classrooms</h3>
+            {% if classrooms %}
+                <div class="classroom-grid">
+                {% for cls in classrooms %}
+                    <a href="{{ url_for('classroom_detail', classroom_id=cls.id) }}" class="classroom-link">
+                        <div class="classroom-item">
+                            <strong>{{ cls.name }}</strong>
+                            <div class="classroom-code">Code: {{ cls.code or 'N/A' }}</div>
+                        </div>
+                    </a>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-data">No classrooms available yet.</div>
+            {% endif %}
+
+            <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.08);">
+                <p style="font-size:0.9rem;color:#4b5563;margin-bottom:10px;">Have a classroom code? Enter it below to join:</p>
+                <form method="post" action="{{ url_for('join_classroom_by_code') }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <input type="text" name="class_code" placeholder="e.g. CLS-A1B2C3" required
+                           style="padding:9px 14px;border-radius:10px;border:1px solid #d1d5db;font-size:0.95rem;flex:1;min-width:160px;">
+                    <button type="submit" class="crystal-button" style="margin:0;padding:9px 22px;">Join</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section id="portal" class="dashboard-section">
+        <h2 class="section-header">Portal</h2>
+        <p style="text-align: center;">View your term tables, GPA/CGPA trends, and published report PDFs.</p>
+        <div style="text-align: center;">
+            <a href="{{ url_for('student_portal_dashboard', school_id=school_id) }}" class="crystal-button">Open Results Portal</a>
+        </div>
+    </section>
+
+    <section id="ai-panel" class="dashboard-section">
+        <h2 class="section-header">Study AI Bot</h2>
+        <div class="study-bot-shell">
+            <div class="study-bot-head">
+                <div class="study-bot-icon">AI</div>
+                <strong style="color:#1e3a8a;">Ask first, browse later</strong>
+                <span class="study-bot-badge">Smart Context</span>
+            </div>
+            <div class="study-bot-controls">
+                <textarea id="studyBotInput" placeholder="Ask anything: explain a topic, build a revision plan, or generate quiz questions from classroom lectures/materials." style="min-height:90px;width:100%;padding:12px;border-radius:12px;border:1px solid #cbd5e1;resize:vertical;"></textarea>
+                <select id="studyBotClassroom" style="width:100%;padding:10px;border-radius:10px;border:1px solid #cbd5e1;height:44px;">
+                    <option value="all">All my classrooms</option>
+                    {% for cls in classrooms %}
+                    <option value="{{ cls.id }}">{{ cls.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="study-bot-subcontrols">
+                <label style="font-size:0.84rem;color:#334155;font-weight:600;display:flex;align-items:center;gap:6px;">
+                    <input id="studyBotLockClassroom" type="checkbox">
+                    Lock to selected classroom only
+                </label>
+                <input id="studyBotImage" type="file" accept="image/*" style="font-size:0.83rem;">
+                <span style="font-size:0.8rem;color:#64748b;">Image Q&A is available. Free plan can have daily image limits.</span>
+            </div>
+
+            <div class="study-bot-actions">
+                <button class="study-bot-btn primary" id="studyBotAsk">Ask AI Tutor</button>
+                <button class="study-bot-btn" data-task="quiz" data-prompt="Generate a focused revision quiz from the latest teacher instructions and lecture materials.">Generate Quiz</button>
+                <button class="study-bot-btn" data-task="plan" data-prompt="Create a 7-day revision plan based on my current classroom content and upcoming tests.">7-Day Plan</button>
+                <button class="study-bot-btn" data-task="review" data-prompt="Review my weak areas from past performance and tell me what to fix first.">Weakness Review</button>
+                <button class="study-bot-btn" data-task="chat" data-prompt="Explain this topic in simple terms with an example from real life.">Explain Simply</button>
+                <button class="study-bot-btn" id="studyBotWeeklyQuiz">Weekly Quiz (Auto)</button>
+            </div>
+
+            <div id="studyBotOutput" class="study-bot-output">Study AI is ready. Ask a question or use the quick actions above.</div>
+            <div id="studyBotMeta" class="study-bot-meta">It reads classroom posts, materials metadata, assignments, and your scored performance trends. Video/audio files are not parsed directly.</div>
+            <div id="studyBotWeekly" class="study-bot-weekly" style="display:none;"></div>
+            <div class="study-bot-history">
+                <strong style="font-size:0.85rem;color:#334155;">Recent AI Chats</strong>
+                <div id="studyBotHistory" style="margin-top:8px;font-size:0.86rem;color:#1f2a52;">Loading history...</div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const rawEvents = {{ events|tojson }};
+    const palette = ["#e74c3c", "#f39c12", "#10b981", "#6366f1", "#ec4899", "#0ea5e9"];
+
+    function toDate(value) {
+        if (!value) return null;
+        const d = new Date(String(value));
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const normalized = (rawEvents || []).map((ev, index) => {
+        const dateText = ev.event_date || ev.date || ev.eventDate || null;
+        return {
+            title: ev.title || "Event",
+            dateText,
+            date: toDate(dateText),
+            color: palette[index % palette.length]
+        };
+    }).filter(ev => ev.date);
+
+    const upcomingEl = document.getElementById("upcomingEvents");
+    const gridEl = document.getElementById("calendarGrid");
+    const labelEl = document.getElementById("monthLabel");
+    const mobileListEl = document.getElementById("mobileEventsList");
+
+    if (!upcomingEl || !gridEl || !labelEl) return;
+
+    const now = new Date();
+    let viewYear = now.getFullYear();
+    let viewMonth = now.getMonth();
+    if (normalized.length) {
+        normalized.sort((a, b) => a.date - b.date);
+        const first = normalized.find(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), 1)) || normalized[0];
+        viewYear = first.date.getFullYear();
+        viewMonth = first.date.getMonth();
+    }
+
+    const upcoming = normalized
+        .filter(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+        .slice(0, 5);
+    if (upcoming.length) {
+        upcomingEl.innerHTML = upcoming.map(ev => `
+            <article class="upcoming-item">
+                <div class="upcoming-title">${ev.title}</div>
+                <div class="upcoming-date">${ev.date.toLocaleDateString()}</div>
+            </article>
+        `).join("");
+    } else {
+        upcomingEl.innerHTML = '<div class="upcoming-date">No upcoming events yet.</div>';
+    }
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function sameDay(a, b) {
+        return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    }
+
+    function renderCalendar(year, month) {
+        labelEl.textContent = `${monthNames[month]} ${year}`;
+
+        const firstDay = new Date(year, month, 1);
+        const startWeekday = firstDay.getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = dayNames.map(d => `<div class="day-name">${d}</div>`).join("");
+        for (let i = 0; i < startWeekday; i += 1) {
+            html += '<div class="day-cell"></div>';
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+            const cellDate = new Date(year, month, day);
+            const todaysEvents = normalized.filter(ev => sameDay(ev.date, cellDate));
+            const chips = todaysEvents.slice(0, 2).map(ev => `<div class="event-chip" style="background:${ev.color}">${ev.title}</div>`).join("");
+            html += `<div class="day-cell"><div class="day-num">${day}</div>${chips}</div>`;
+        }
+
+        gridEl.innerHTML = html;
+    }
+
+    renderCalendar(viewYear, viewMonth);
+
+    if (mobileListEl) {
+        const mobileEvents = normalized
+            .slice()
+            .sort((a, b) => a.date - b.date)
+            .filter(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+            .slice(0, 8);
+        if (mobileEvents.length) {
+            mobileListEl.innerHTML = mobileEvents.map(ev => `
+                <article class="mobile-event-card">
+                    <div style="font-weight:800; color:#1f2a52;">${ev.title}</div>
+                    <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">${ev.date.toLocaleDateString()}</div>
+                </article>
+            `).join("");
+        } else {
+            mobileListEl.innerHTML = '<div style="font-size:0.82rem; color:#64748b;">No upcoming events yet.</div>';
+        }
+    }
+
+    const botInput = document.getElementById("studyBotInput");
+    const botOutput = document.getElementById("studyBotOutput");
+    const botMeta = document.getElementById("studyBotMeta");
+    const botClassroom = document.getElementById("studyBotClassroom");
+    const botLockClassroom = document.getElementById("studyBotLockClassroom");
+    const botImage = document.getElementById("studyBotImage");
+    const botAsk = document.getElementById("studyBotAsk");
+    const botWeeklyQuizBtn = document.getElementById("studyBotWeeklyQuiz");
+    const botWeeklyBox = document.getElementById("studyBotWeekly");
+    const botHistory = document.getElementById("studyBotHistory");
+    const quickButtons = document.querySelectorAll(".study-bot-btn[data-task]");
+    let currentWeeklyQuiz = null;
+
+    function selectedClassroomValue() {
+        return botClassroom ? botClassroom.value : "all";
+    }
+
+    function renderHistory(items) {
+        if (!botHistory) return;
+        if (!Array.isArray(items) || !items.length) {
+            botHistory.innerHTML = '<div style="color:#64748b;">No chat history yet.</div>';
+            return;
+        }
+        botHistory.innerHTML = items.map((row) => {
+            const prompt = (row.prompt || "").replace(/</g, "&lt;").slice(0, 140);
+            const mode = (row.response_mode || "ai").toUpperCase();
+            const stamp = (row.created_at || "").slice(0, 16).replace("T", " ");
+            const media = row.has_image ? " + image" : "";
+            return `<div class="study-bot-history-item"><strong>${row.task || "chat"}</strong> (${mode}${media})<br>${prompt || "No prompt"}<br><span style="color:#64748b;font-size:0.8rem;">${stamp}</span></div>`;
+        }).join("");
+    }
+
+    async function loadHistory() {
+        if (!botHistory) return;
+        try {
+            const classId = selectedClassroomValue();
+            const resp = await fetch(`{{ url_for('ai_student_study_history') }}?classroom_id=${encodeURIComponent(classId)}`);
+            const data = await resp.json();
+            renderHistory(data.history || []);
+        } catch (e) {
+            botHistory.innerHTML = '<div style="color:#dc2626;">Unable to load chat history.</div>';
+        }
+    }
+
+    function renderWeeklyQuiz(quizPayload, quizId, weekKey) {
+        if (!botWeeklyBox) return;
+        const quiz = quizPayload || {};
+        const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+        const title = quiz.quiz_title || "Weekly Quiz";
+        const max = questions.length;
+        currentWeeklyQuiz = { quizId, max, weekKey };
+        const lines = questions.map((q, i) => `<div style="margin-bottom:10px;"><strong>${i + 1}. ${(q.question || "Question").replace(/</g, "&lt;")}</strong><div style="color:#64748b;font-size:0.8rem;">Hint: ${(q.source_hint || "class context").replace(/</g, "&lt;")}</div></div>`).join("");
+        botWeeklyBox.innerHTML = `
+            <div style="font-weight:800;color:#27325f;margin-bottom:8px;">${title} (${weekKey})</div>
+            ${lines || '<div style="color:#64748b;">No weekly quiz questions returned yet.</div>'}
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+                <input id="weeklyQuizScoreInput" type="number" min="0" max="${max || 0}" placeholder="Your score / ${max || 0}" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:10px;max-width:160px;">
+                <button id="weeklyQuizSaveBtn" class="study-bot-btn">Save Score</button>
+            </div>
+            <div id="weeklyQuizSaveMeta" style="margin-top:6px;color:#64748b;font-size:0.82rem;"></div>
+        `;
+        botWeeklyBox.style.display = "block";
+
+        const saveBtn = document.getElementById("weeklyQuizSaveBtn");
+        const scoreInput = document.getElementById("weeklyQuizScoreInput");
+        const saveMeta = document.getElementById("weeklyQuizSaveMeta");
+        if (saveBtn && scoreInput) {
+            saveBtn.addEventListener("click", async () => {
+                const score = Number(scoreInput.value);
+                if (Number.isNaN(score) || score < 0 || score > max) {
+                    if (saveMeta) saveMeta.textContent = `Enter a valid score between 0 and ${max}.`;
+                    return;
+                }
+                try {
+                    const response = await fetch("{{ url_for('ai_student_weekly_quiz_attempt') }}", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({
+                            weekly_quiz_id: quizId,
+                            score,
+                            total_questions: max,
+                            classroom_id: selectedClassroomValue()
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        if (saveMeta) saveMeta.textContent = data.error || "Could not save score.";
+                        return;
+                    }
+                    if (saveMeta) saveMeta.textContent = `Saved: ${data.score}/${data.total_questions} (${data.percentage}%).`;
+                } catch (e) {
+                    if (saveMeta) saveMeta.textContent = "Network error while saving score.";
+                }
+            });
+        }
+    }
+
+    async function loadWeeklyQuiz() {
+        if (!botWeeklyBox) return;
+        botWeeklyBox.style.display = "block";
+        botWeeklyBox.textContent = "Preparing weekly quiz...";
+        try {
+            const response = await fetch("{{ url_for('ai_student_weekly_quiz') }}", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ classroom_id: selectedClassroomValue() })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                botWeeklyBox.textContent = data.error || "Could not load weekly quiz.";
+                return;
+            }
+            renderWeeklyQuiz(data.quiz, data.quiz_id, data.week_key);
+        } catch (e) {
+            botWeeklyBox.textContent = "Network error while loading weekly quiz.";
+        }
+    }
+
+    async function runStudyBot(task, seedPrompt) {
+        if (!botOutput) return;
+        const typed = (botInput && botInput.value ? botInput.value : "").trim();
+        const message = typed || (seedPrompt || "");
+        if (!message) {
+            botOutput.textContent = "Type your question first so Study AI can help.";
+            return;
+        }
+
+        botOutput.textContent = "Thinking...";
+        if (botMeta) {
+            botMeta.textContent = "Collecting classroom context and building your response...";
+        }
+
+        try {
+            if (botLockClassroom && botLockClassroom.checked && selectedClassroomValue() === "all") {
+                botOutput.textContent = "Choose a classroom first or untick classroom lock.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("task", task);
+            formData.append("message", message);
+            formData.append("classroom_id", selectedClassroomValue());
+            formData.append("question_count", "6");
+            formData.append("lock_classroom", botLockClassroom && botLockClassroom.checked ? "true" : "false");
+            if (botImage && botImage.files && botImage.files[0]) {
+                formData.append("image", botImage.files[0]);
+            }
+
+            const response = await fetch("{{ url_for('ai_student_study_bot') }}", {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                botOutput.textContent = data.error || "Study AI request failed.";
+                return;
+            }
+
+            if (task === "quiz" && data.quiz) {
+                const quiz = data.quiz;
+                const title = quiz.quiz_title || "Classroom Revision Quiz";
+                const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+                const rendered = questions.map((q, index) => {
+                    const qText = q.question || "Question";
+                    const aText = q.answer || "Answer not provided";
+                    const eText = q.explanation || "";
+                    const sText = q.source_hint ? `Source: ${q.source_hint}` : "";
+                    return `${index + 1}. ${qText}\nAnswer: ${aText}${eText ? `\nWhy: ${eText}` : ""}${sText ? `\n${sText}` : ""}`;
+                }).join("\n\n");
+                botOutput.textContent = `${title}\n\n${rendered || "Quiz not available. Try again."}`;
+            } else {
+                botOutput.textContent = data.reply || "No response returned.";
+            }
+
+            if (botMeta) {
+                const c = data.used_context || {};
+                botMeta.textContent = `Context used: ${c.classrooms || 0} classrooms, ${c.posts || 0} posts, ${c.materials || 0} materials, ${c.assignments || 0} assignments, ${c.submissions || 0} submissions.`;
+            }
+
+            if (botImage) {
+                botImage.value = "";
+            }
+            await loadHistory();
+        } catch (error) {
+            botOutput.textContent = "Network error while contacting Study AI. Please retry.";
+        }
+    }
+
+    if (botAsk) {
+        botAsk.addEventListener("click", () => runStudyBot("chat", ""));
+    }
+    quickButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const task = btn.getAttribute("data-task") || "chat";
+            const prompt = btn.getAttribute("data-prompt") || "";
+            runStudyBot(task, prompt);
+        });
+    });
+
+    if (botWeeklyQuizBtn) {
+        botWeeklyQuizBtn.addEventListener("click", () => loadWeeklyQuiz());
+    }
+    if (botClassroom) {
+        botClassroom.addEventListener("change", () => {
+            loadHistory();
+        });
+    }
+
+    loadHistory();
+})();
+</script>
+{% endblock %}

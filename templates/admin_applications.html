@@ -1,0 +1,123 @@
+{% extends "admin_base.html" %}
+{% block title %}Applications – {{ school.name }}{% endblock %}
+
+{% block content %}
+<div style="padding: 28px 32px;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:28px;">
+    <div>
+      <h2 style="font-size:1.45rem; font-weight:800; margin:0; color:#111827;">Online Applications</h2>
+      <p style="margin:4px 0 0; color:#6b7280; font-size:0.9rem;">{{ school.name }}</p>
+    </div>
+    {% if session.get('role') == 'school_admin' %}
+    <a href="{{ url_for('school_admin_dashboard', school_id=school.id) }}" style="text-decoration:none; font-size:0.85rem; color:#6b7280; border:1px solid #e5e7eb; padding:8px 16px; border-radius:8px; background:#fff;">← School Dashboard</a>
+    {% else %}
+    <a href="{{ url_for('admin_dashboard') }}" style="text-decoration:none; font-size:0.85rem; color:#6b7280; border:1px solid #e5e7eb; padding:8px 16px; border-radius:8px; background:#fff;">← Admin Dashboard</a>
+    {% endif %}
+  </div>
+
+  {# Flash messages #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for cat, msg in messages %}
+    <div style="margin-bottom:14px; padding:12px 16px; border-radius:10px;
+      {% if cat=='success' %}background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;
+      {% elif cat=='error' %}background:#fef2f2; border:1px solid #fecaca; color:#991b1b;
+      {% else %}background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;{% endif %}
+      font-size:0.88rem;">{{ msg }}</div>
+    {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {# Status filter tabs #}
+  {% set statuses = [('all','All'),('submitted','Submitted'),('under_review','Under Review'),('missing_docs','Missing Docs'),('accepted','Accepted'),('rejected','Rejected')] %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px;">
+    {% for val, label in statuses %}
+    <a href="{{ url_for('admin_applications', school_id=school.id, status=val) }}"
+       style="text-decoration:none; font-size:0.82rem; font-weight:600; padding:7px 16px; border-radius:8px; border:1px solid #e5e7eb;
+       {% if status_filter == val %}background:#111827; color:#fff; border-color:#111827;{% else %}background:#fff; color:#374151;{% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {# Table #}
+  <div style="background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(15,23,42,0.07); overflow:hidden;">
+    {% if applications %}
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:0.87rem;">
+        <thead>
+          <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Reference</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Applicant</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Programme</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Email</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Status</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Screening</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Submitted</th>
+            <th style="padding:12px 16px; text-align:left; font-weight:700; color:#374151;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          {% set status_colors = {
+            'draft':        ('background:#f3f4f6; color:#6b7280;'),
+            'submitted':    ('background:#eff6ff; color:#1d4ed8;'),
+            'under_review': ('background:#fef9c3; color:#854d0e;'),
+            'missing_docs': ('background:#fff7ed; color:#9a3412;'),
+            'accepted':     ('background:#f0fdf4; color:#166534;'),
+            'rejected':     ('background:#fef2f2; color:#991b1b;'),
+          } %}
+          {% set screening = screenings_by_ref.get(app.ref) if screenings_by_ref else None %}
+          {% set screening_colors = {
+            'recommended': 'background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;',
+            'review': 'background:#fffbeb; color:#b45309; border:1px solid #fde68a;',
+            'needs_info': 'background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;'
+          } %}
+          <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:12px 16px; font-family:monospace; font-weight:700; font-size:0.85rem;">{{ app.ref }}</td>
+            <td style="padding:12px 16px;">{{ (app.title or '') }} {{ app.surname or '—' }}<br><span style="font-size:0.78rem; color:#6b7280;">{{ app.first_names or '' }}</span></td>
+            <td style="padding:12px 16px; max-width:200px;"><span style="font-size:0.83rem;">{{ (app.qualification or '—')[:60] }}{% if (app.qualification or '')|length > 60 %}…{% endif %}</span><br><span style="font-size:0.76rem; color:#6b7280;">{{ app.section or '' }} · {{ app.academic_year or '' }}</span></td>
+            <td style="padding:12px 16px; font-size:0.83rem;">{{ app.email or '—' }}</td>
+            <td style="padding:12px 16px;">
+              <span style="font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; {{ status_colors.get(app.status, 'background:#f3f4f6; color:#6b7280;') }}">
+                {{ (app.status or 'draft')|replace('_',' ')|title }}
+              </span>
+            </td>
+            <td style="padding:12px 16px; min-width:160px;">
+              {% if screening %}
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <span style="display:inline-flex; width:max-content; font-size:0.75rem; font-weight:800; padding:4px 10px; border-radius:999px; {{ screening_colors.get(screening.recommendation, 'background:#f3f4f6; color:#374151; border:1px solid #e5e7eb;') }}">
+                  {{ screening_labels.get(screening.recommendation, 'Screened') if screening_labels is defined else (screening.recommendation or 'Screened')|replace('_', ' ')|title }}
+                </span>
+                <span style="font-size:0.76rem; color:#475569; font-weight:700;">Score: {{ screening.screening_score|round|int }}/100</span>
+              </div>
+              {% else %}
+              <span style="font-size:0.76rem; color:#94a3b8; font-weight:700;">Not screened</span>
+              {% endif %}
+            </td>
+            <td style="padding:12px 16px; font-size:0.8rem; color:#6b7280;">{{ (app.submitted_at or app.created_at or '')[:10] }}</td>
+            <td style="padding:12px 16px;">
+              <a href="{{ url_for('admin_application_detail', school_id=school.id, ref=app.ref) }}"
+                 style="text-decoration:none; background:#111827; color:#fff; font-size:0.78rem; font-weight:700; padding:7px 14px; border-radius:8px;">
+                Review
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding:48px; text-align:center; color:#6b7280;">
+      <p style="font-size:1rem; font-weight:600;">No applications found.</p>
+      <p style="font-size:0.88rem; margin-top:8px;">Applications submitted through the online portal will appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="margin-top:16px; font-size:0.83rem; color:#6b7280;">
+    {{ applications|length }} application(s) shown.
+  </div>
+</div>
+{% endblock %}

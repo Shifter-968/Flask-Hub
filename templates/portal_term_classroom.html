@@ -1,0 +1,98 @@
+{% extends "base_dashboard.html" %}
+{% set title = ('Semester' if actor_type == 'lecturer' else 'Term') ~ " Results – " ~ (classroom.name if classroom else "Classroom") %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .breadcrumb {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        font-size: 0.86rem; color: #94a3b8; margin-bottom: 18px;
+    }
+    .breadcrumb a { color: #3b82f6; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .page-title { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+    .page-sub { color: #64748b; margin: 0 0 28px; }
+
+    .students-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+    }
+    .student-card {
+        background: white;
+        border-radius: 16px; padding: 18px 20px;
+        box-shadow: 0 3px 16px rgba(30,41,59,0.07);
+        border: 1px solid #e2e8f0;
+        display: flex; align-items: center; gap: 16px;
+        transition: box-shadow 0.2s ease;
+    }
+    .student-card:hover { box-shadow: 0 6px 24px rgba(30,41,59,0.11); }
+    .student-avatar {
+        width: 48px; height: 48px; border-radius: 50%;
+        background: linear-gradient(135deg, #10b981, #059669);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .student-info { flex: 1; min-width: 0; }
+    .student-name { font-weight: 700; color: #1e293b; font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .student-badge {
+        display: inline-block; padding: 2px 9px;
+        border-radius: 99px; font-size: 0.73rem; font-weight: 600; margin-top: 4px;
+        background: #f0fdf4; color: #15803d;
+    }
+    .btn-view-report {
+        padding: 9px 18px; border-radius: 9px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white; font-size: 0.82rem; font-weight: 600;
+        text-decoration: none; white-space: nowrap;
+        transition: opacity 0.2s;
+        box-shadow: 0 3px 10px rgba(16,185,129,0.28);
+    }
+    .btn-view-report:hover { opacity: 0.87; }
+    .no-data-state {
+        text-align: center; padding: 60px 20px; color: #94a3b8;
+        background: white; border-radius: 18px; border: 1px dashed #e2e8f0;
+    }
+</style>
+
+<div class="breadcrumb">
+    <a href="{{ url_for('portal_dashboard', school_id=school_id) }}">📊 Portal</a>
+    <span>›</span>
+    <a href="{{ url_for('portal_term_results', school_id=school_id) }}">
+        {{ 'Semester' if actor_type == 'lecturer' else 'Term' }} Results
+    </a>
+    <span>›</span>
+    <span>{{ classroom.name if classroom else 'Classroom' }}</span>
+</div>
+
+<div class="page-title">{{ classroom.name if classroom else 'Classroom' }}</div>
+<p class="page-sub">
+    Select a student to view or record their
+    {{ 'semester' if actor_type == 'lecturer' else 'term' }} end report card.
+    {% if cycle_meta %}<br><strong>Active cycle:</strong> {{ cycle_meta.cycle_label }} {{ cycle_meta.academic_year }}{% endif %}
+</p>
+
+{% if students %}
+<div class="students-grid">
+    {% for s in students %}
+    <div class="student-card">
+        <div class="student-avatar">{{ s.name[0].upper() if s.name else '?' }}</div>
+        <div class="student-info">
+            <div class="student-name">{{ s.name }}</div>
+            <span class="student-badge">{{ s.type|title }}</span>
+        </div>
+        <a href="{{ url_for('portal_term_student', school_id=school_id, classroom_id=classroom.id, student_id=s.id, student_type=s.type) }}"
+           class="btn-view-report">View Report</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-data-state">
+    <div style="font-size:2.8rem;">👥</div>
+    <strong>No students enrolled yet</strong>
+    <p style="margin:10px 0 0;font-size:0.92rem;">Students will appear here once they join this classroom.</p>
+</div>
+{% endif %}
+{% endblock %}

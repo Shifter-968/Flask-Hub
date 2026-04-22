@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classes | Smart School Hub</title>
+  <style>
+    :root {
+      --bg-a: #0d1122;
+      --bg-b: #141b34;
+      --card: rgba(13, 20, 39, 0.8);
+      --line: rgba(255, 255, 255, 0.18);
+      --text: #f0f5ff;
+      --muted: #bcc8e3;
+      --accent: #67e8c7;
+      --accent-2: #89b4ff;
+      --danger: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 420px at 5% 0%, rgba(103, 232, 199, 0.18), transparent 60%),
+        radial-gradient(1000px 520px at 100% 100%, rgba(137, 180, 255, 0.22), transparent 55%),
+        linear-gradient(155deg, var(--bg-a), var(--bg-b));
+      padding: clamp(14px, 2vw, 28px);
+    }
+    .wrap { width: min(980px, 100%); margin: 0 auto; }
+    .head {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      padding: clamp(14px, 2.5vw, 24px);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 22px 50px rgba(2, 8, 18, 0.45);
+    }
+    .head h2 { margin: 0; font-size: clamp(1.4rem, 3.6vw, 2.1rem); }
+    .head p { margin: 5px 0 0; color: var(--muted); }
+    .btn {
+      text-decoration: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-block;
+    }
+    .btn-primary { color: #0b1d26; background: linear-gradient(130deg, var(--accent), var(--accent-2)); }
+    .classes { margin-top: 14px; display: grid; gap: 10px; }
+    .class-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.07);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .class-title { margin: 0; font-size: 1.05rem; }
+    .class-code { color: var(--muted); font-size: 0.92rem; margin-top: 3px; }
+    .actions { display: flex; gap: 8px; align-items: center; }
+    .btn-edit { color: #04111a; background: #c7f9ec; }
+    .btn-delete { color: #fff; background: var(--danger); }
+    .empty {
+      margin-top: 14px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    form { margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="head">
+      <div>
+        <h2>Classes</h2>
+        <p>Manage your teaching spaces and class roster entry points.</p>
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('create_class') }}">Add New Class</a>
+    </section>
+
+    {% if classes %}
+      <section class="classes">
+        {% for c in classes %}
+          <article class="class-item">
+            <div>
+              <h3 class="class-title">{{ c.name }}</h3>
+              <div class="class-code">Code: {{ c.code }}</div>
+            </div>
+            <div class="actions">
+              <a class="btn btn-edit" href="{{ url_for('update_class', class_id=c.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('delete_class', class_id=c.id) }}">
+                <button class="btn btn-delete" type="submit">Delete</button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+    {% else %}
+      <section class="empty">No classes created yet. Use <strong>Add New Class</strong> to get started.</section>
+    {% endif %}
+  </main>
+<script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>

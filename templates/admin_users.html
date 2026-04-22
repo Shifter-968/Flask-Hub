@@ -1,0 +1,515 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Manage Users{% endblock %}
+{% block header %}Manage Users{% endblock %}
+
+{% block content %}
+    <style>
+        .user-admin-shell {
+            display: grid;
+            gap: 24px;
+        }
+        .user-admin-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .summary-card {
+            padding: 18px 20px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+            color: #f8fafc;
+            box-shadow: 0 18px 30px rgba(15, 23, 42, 0.14);
+        }
+        .summary-card span {
+            display: block;
+            opacity: 0.82;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .summary-card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 2rem;
+            letter-spacing: -0.04em;
+        }
+        .flash-stack {
+            display: grid;
+            gap: 10px;
+        }
+        .flash-item {
+            padding: 14px 16px;
+            border-radius: 14px;
+            font-weight: 600;
+        }
+        .flash-success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+        .flash-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .flash-info, .flash-warning {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 1px solid #93c5fd;
+        }
+        .tab-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .tab-button {
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0f172a;
+            font-weight: 700;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tab-button.is-active {
+            background: #0f172a;
+            color: #f8fafc;
+            border-color: #0f172a;
+        }
+        .role-pane {
+            display: none;
+            gap: 20px;
+        }
+        .role-pane.is-active {
+            display: grid;
+        }
+        .panel-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+        .admin-card {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+        }
+        .admin-card h3 {
+            margin: 0 0 8px;
+            font-size: 1.15rem;
+        }
+        .admin-card p {
+            margin: 0 0 18px;
+            color: #64748b;
+        }
+        .role-form {
+            display: grid;
+            gap: 14px;
+        }
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+        .field.field-wide {
+            grid-column: 1 / -1;
+        }
+        .field label {
+            margin: 0;
+            font-size: 0.84rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #475569;
+            font-weight: 700;
+        }
+        .field input,
+        .field select {
+            max-width: 100%;
+            margin: 0;
+        }
+        .availability-message {
+            min-height: 18px;
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+        .availability-message.is-ok {
+            color: #15803d;
+        }
+        .availability-message.is-error {
+            color: #b91c1c;
+        }
+        .role-table-card {
+            overflow: hidden;
+        }
+        .table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .table-header .count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-weight: 800;
+        }
+        .empty-state {
+            padding: 24px;
+            border-radius: 18px;
+            background: #f8fafc;
+            color: #64748b;
+            text-align: center;
+            border: 1px dashed #cbd5e1;
+        }
+        .table-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .danger-link {
+            color: #dc2626;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .danger-link:hover {
+            text-decoration: underline;
+        }
+        .edit-shell {
+            margin-top: 8px;
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+            padding-top: 10px;
+        }
+        .edit-shell summary {
+            cursor: pointer;
+            font-weight: 700;
+            color: #1d4ed8;
+            list-style: none;
+        }
+        .edit-shell summary::-webkit-details-marker {
+            display: none;
+        }
+        .edit-shell[open] summary {
+            margin-bottom: 14px;
+        }
+        .inline-form-note {
+            margin: 0 0 12px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .role-table td,
+        .role-table th {
+            vertical-align: top;
+        }
+        @media (max-width: 1200px) {
+            .panel-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 720px) {
+            .field-grid {
+                grid-template-columns: 1fr;
+            }
+            .table-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+
+    <section class="user-admin-shell">
+        <div class="user-admin-summary">
+            <div class="summary-card">
+                <span>Total Accounts</span>
+                <strong>{{ users|length }}</strong>
+            </div>
+            <div class="summary-card">
+                <span>Schools</span>
+                <strong>{{ schools|length }}</strong>
+            </div>
+            <div class="summary-card">
+                <span>Courses</span>
+                <strong>{{ courses|length }}</strong>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="flash-item flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="tab-strip" data-role-tabs>
+            {% for tab in role_tabs %}
+                <button
+                    type="button"
+                    class="tab-button{% if tab.value == active_tab %} is-active{% endif %}"
+                    data-tab-target="{{ tab.value }}"
+                >{{ tab.label }}</button>
+            {% endfor %}
+        </div>
+
+        {% for tab in role_tabs %}
+            <section class="role-pane{% if tab.value == active_tab %} is-active{% endif %}" data-role-pane="{{ tab.value }}">
+                <div class="panel-grid">
+                    <article class="admin-card">
+                        <h3>Add {{ tab.singular_label }}</h3>
+                        <p>{{ tab.description }}</p>
+                        <form method="POST" action="{{ url_for('add_user') }}" class="role-form" data-availability-form>
+                            <input type="hidden" name="role" value="{{ tab.value }}">
+                            <input type="hidden" name="active_tab" value="{{ tab.value }}">
+                            <div class="field-grid">
+                                {% for field in tab.form_fields %}
+                                    <div class="field{% if field.type == 'select' or field.name == 'current_residential_address' %} field-wide{% endif %}">
+                                        <label for="add-{{ tab.value }}-{{ field.name }}">{{ field.label }}{% if field.required %} *{% endif %}</label>
+                                        {% if field.type == 'select' %}
+                                            <select
+                                                id="add-{{ tab.value }}-{{ field.name }}"
+                                                name="{{ field.name }}"
+                                                {% if field.required %}required{% endif %}
+                                            >
+                                                <option value="">Select {{ field.label|lower }}</option>
+                                                {% for option in field.options or [] %}
+                                                    <option value="{{ option.value }}">{{ option.label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% else %}
+                                            <input
+                                                id="add-{{ tab.value }}-{{ field.name }}"
+                                                type="{{ field.type }}"
+                                                name="{{ field.name }}"
+                                                {% if field.required %}required{% endif %}
+                                                {% if field.autocomplete %}autocomplete="{{ field.autocomplete }}"{% endif %}
+                                                {% if field.availability %}data-availability-field="{{ field.availability }}"{% endif %}
+                                            >
+                                        {% endif %}
+                                        {% if field.availability %}
+                                            <div class="availability-message" data-availability-target="{{ field.availability }}"></div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button type="submit">Create {{ tab.singular_label }}</button>
+                        </form>
+                    </article>
+
+                    <article class="admin-card role-table-card">
+                        <div class="table-header">
+                            <div>
+                                <h3>{{ tab.label }}</h3>
+                                <p>All {{ tab.label|lower }} linked to the global admin console.</p>
+                            </div>
+                            <span class="count-badge">{{ tab.rows|length }}</span>
+                        </div>
+
+                        {% if tab.rows %}
+                            <table class="role-table">
+                                <thead>
+                                    <tr>
+                                        {% for column in tab.columns %}
+                                            <th>{{ column.label }}</th>
+                                        {% endfor %}
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in tab.rows %}
+                                        <tr>
+                                            {% for column in tab.columns %}
+                                                <td>{{ row[column.key] or '—' }}</td>
+                                            {% endfor %}
+                                            <td>
+                                                <div class="table-actions">
+                                                    <a
+                                                        class="danger-link"
+                                                        href="{{ url_for('delete_user', user_id=row.id, tab=tab.value) }}"
+                                                        onclick="return confirm('Delete {{ row.username or row.email }}? This cannot be undone.');"
+                                                    >Delete</a>
+                                                </div>
+                                                <details class="edit-shell">
+                                                    <summary>Edit {{ row.username or row.email }}</summary>
+                                                    <p class="inline-form-note">Update the account and profile fields relevant to this role.</p>
+                                                    <form method="POST" action="{{ url_for('edit_user', user_id=row.id) }}" class="role-form" data-availability-form>
+                                                        <input type="hidden" name="role" value="{{ tab.value }}">
+                                                        <input type="hidden" name="active_tab" value="{{ tab.value }}">
+                                                        <input type="hidden" name="user_id" value="{{ row.id }}">
+                                                        <div class="field-grid">
+                                                            {% for field in tab.form_fields if field.name != 'password' %}
+                                                                <div class="field{% if field.type == 'select' or field.name == 'current_residential_address' %} field-wide{% endif %}">
+                                                                    <label for="edit-{{ tab.value }}-{{ row.id }}-{{ field.name }}">{{ field.label }}{% if field.required %} *{% endif %}</label>
+                                                                    {% if field.type == 'select' %}
+                                                                        <select
+                                                                            id="edit-{{ tab.value }}-{{ row.id }}-{{ field.name }}"
+                                                                            name="{{ field.name }}"
+                                                                            {% if field.required %}required{% endif %}
+                                                                        >
+                                                                            <option value="">Select {{ field.label|lower }}</option>
+                                                                            {% for option in field.options or [] %}
+                                                                                <option value="{{ option.value }}" {% if row[field.name]|string == option.value|string %}selected{% endif %}>{{ option.label }}</option>
+                                                                            {% endfor %}
+                                                                        </select>
+                                                                    {% else %}
+                                                                        <input
+                                                                            id="edit-{{ tab.value }}-{{ row.id }}-{{ field.name }}"
+                                                                            type="{{ field.type }}"
+                                                                            name="{{ field.name }}"
+                                                                            value="{{ row[field.name] }}"
+                                                                            {% if field.required %}required{% endif %}
+                                                                            {% if field.autocomplete %}autocomplete="{{ field.autocomplete }}"{% endif %}
+                                                                            {% if field.availability %}data-availability-field="{{ field.availability }}"{% endif %}
+                                                                        >
+                                                                    {% endif %}
+                                                                    {% if field.availability %}
+                                                                        <div class="availability-message" data-availability-target="{{ field.availability }}"></div>
+                                                                    {% endif %}
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                        <button type="submit">Update {{ tab.singular_label }}</button>
+                                                    </form>
+                                                </details>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="empty-state">No {{ tab.label|lower }} found yet. Use the form to add the first one.</div>
+                        {% endif %}
+                    </article>
+                </div>
+            </section>
+        {% endfor %}
+    </section>
+
+    <script>
+        (function () {
+            var activeTab = {{ active_tab|tojson }};
+
+            function setActiveTab(tabName) {
+                document.querySelectorAll('[data-tab-target]').forEach(function (button) {
+                    button.classList.toggle('is-active', button.getAttribute('data-tab-target') === tabName);
+                });
+
+                document.querySelectorAll('[data-role-pane]').forEach(function (pane) {
+                    pane.classList.toggle('is-active', pane.getAttribute('data-role-pane') === tabName);
+                });
+
+                activeTab = tabName;
+            }
+
+            document.querySelectorAll('[data-tab-target]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    setActiveTab(button.getAttribute('data-tab-target'));
+                });
+            });
+
+            function applyAvailabilityState(target, status) {
+                if (!target) {
+                    return;
+                }
+                target.textContent = status.message || '';
+                target.classList.toggle('is-ok', !!status.available && !!status.checked);
+                target.classList.toggle('is-error', status.checked && status.available === false);
+            }
+
+            function requestAvailability(form) {
+                var emailField = form.querySelector('[data-availability-field="email"]');
+                var usernameField = form.querySelector('[data-availability-field="username"]');
+                var userIdField = form.querySelector('input[name="user_id"]');
+                var params = new URLSearchParams();
+
+                if (emailField && emailField.value.trim()) {
+                    params.set('email', emailField.value.trim());
+                }
+                if (usernameField && usernameField.value.trim()) {
+                    params.set('username', usernameField.value.trim());
+                }
+                if (userIdField && userIdField.value.trim()) {
+                    params.set('user_id', userIdField.value.trim());
+                }
+
+                if (!params.toString()) {
+                    applyAvailabilityState(form.querySelector('[data-availability-target="email"]'), { checked: false, available: true, message: '' });
+                    applyAvailabilityState(form.querySelector('[data-availability-target="username"]'), { checked: false, available: true, message: '' });
+                    return Promise.resolve(true);
+                }
+
+                return fetch('{{ url_for("admin_user_availability") }}?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (payload) {
+                        var emailStatus = payload.email || { checked: false, available: true, message: '' };
+                        var usernameStatus = payload.username || { checked: false, available: true, message: '' };
+                        applyAvailabilityState(form.querySelector('[data-availability-target="email"]'), emailStatus);
+                        applyAvailabilityState(form.querySelector('[data-availability-target="username"]'), usernameStatus);
+
+                        if (emailField) {
+                            emailField.setCustomValidity(emailStatus.checked && emailStatus.available === false ? (emailStatus.message || 'Email unavailable.') : '');
+                        }
+                        if (usernameField) {
+                            usernameField.setCustomValidity(usernameStatus.checked && usernameStatus.available === false ? (usernameStatus.message || 'Username unavailable.') : '');
+                        }
+
+                        return (emailStatus.available !== false) && (usernameStatus.available !== false);
+                    })
+                    .catch(function () {
+                        return true;
+                    });
+            }
+
+            document.querySelectorAll('[data-availability-form]').forEach(function (form) {
+                var timerId = null;
+                ['email', 'username'].forEach(function (fieldName) {
+                    var field = form.querySelector('[data-availability-field="' + fieldName + '"]');
+                    if (!field) {
+                        return;
+                    }
+
+                    var scheduleCheck = function () {
+                        window.clearTimeout(timerId);
+                        timerId = window.setTimeout(function () {
+                            requestAvailability(form);
+                        }, 250);
+                    };
+
+                    field.addEventListener('input', scheduleCheck);
+                    field.addEventListener('blur', function () {
+                        requestAvailability(form);
+                    });
+                });
+
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    requestAvailability(form).then(function (isAvailable) {
+                        if (!isAvailable) {
+                            form.reportValidity();
+                            return;
+                        }
+                        form.submit();
+                    });
+                });
+            });
+
+            setActiveTab(activeTab);
+        })();
+    </script>
+{% endblock %}

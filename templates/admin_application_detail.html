@@ -1,0 +1,250 @@
+{% extends "admin_base.html" %}
+{% block title %}Application {{ application.ref }} – {{ school.name }}{% endblock %}
+
+{% block content %}
+<div style="padding: 28px 32px;">
+
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:28px;">
+    <a href="{{ url_for('admin_applications', school_id=school.id) }}"
+       style="text-decoration:none; font-size:0.85rem; color:#6b7280; border:1px solid #e5e7eb; padding:8px 16px; border-radius:8px; background:#fff;">
+      ← All Applications
+    </a>
+    <div>
+      <h2 style="font-size:1.35rem; font-weight:800; margin:0; color:#111827; font-family:monospace;">{{ application.ref }}</h2>
+      <p style="margin:2px 0 0; color:#6b7280; font-size:0.87rem;">{{ school.name }} &bull; Submitted {{ (application.submitted_at or application.created_at or '')[:10] }}</p>
+    </div>
+  </div>
+
+  {# Flash messages #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="margin-bottom:14px; padding:12px 16px; border-radius:10px;
+      {% if cat=='success' %}background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;
+      {% elif cat=='error' %}background:#fef2f2; border:1px solid #fecaca; color:#991b1b;
+      {% else %}background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;{% endif %}
+      font-size:0.88rem;">{{ msg }}</div>
+    {% endfor %}{% endif %}
+  {% endwith %}
+
+  <div style="display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;">
+
+    {# ── DETAIL PANELS ── #}
+    <div>
+
+      {% macro detail_card(title) %}
+      <div style="background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(15,23,42,0.07); padding:24px; margin-bottom:16px;">
+        <h3 style="font-size:0.95rem; font-weight:700; color:#1e3a6e; border-left:3px solid #f58220; padding-left:10px; margin-bottom:16px;">{{ title }}</h3>
+      {% endmacro %}
+      {% macro row(label, value) %}
+        <div style="display:flex; gap:12px; padding:7px 0; border-bottom:1px solid #f8fafc; font-size:0.87rem;">
+          <span style="min-width:160px; color:#6b7280; font-weight:500; flex-shrink:0;">{{ label }}</span>
+          <span style="color:#111827; font-weight:600;">{{ value or '—' }}</span>
+        </div>
+      {% endmacro %}
+
+      {# Programme #}
+      {{ detail_card('Programme Selection') }}
+        {{ row('Academic Year', application.academic_year) }}
+        {{ row('Qualification', application.qualification) }}
+        {{ row('Study Mode', application.section) }}
+      </div>
+
+      {# Personal #}
+      {{ detail_card('Personal Information') }}
+        {{ row('Full Name', (application.title or '') ~ ' ' ~ (application.surname or '') ~ ', ' ~ (application.first_names or '')) }}
+        {{ row('Date of Birth', application.dob) }}
+        {{ row('Gender', application.gender) }}
+        {{ row('Marital Status', application.marital_status) }}
+        {{ row('Nationality', application.nationality) }}
+        {{ row('National ID / Passport', application.national_id) }}
+        {{ row('Disability', application.disability) }}
+        {% if application.disability_description %}{{ row('Disability Description', application.disability_description) }}{% endif %}
+        {{ row('Region', application.region) }}
+        {{ row('Email', application.email) }}
+        {{ row('Phone', application.phone) }}
+      </div>
+
+      {# Guardian #}
+      {{ detail_card('Guardian / Responsible Payer') }}
+        {{ row('Name', (application.payer_title or '') ~ ' ' ~ (application.payer_surname or '')) }}
+        {{ row('Relationship', application.payer_relationship) }}
+        {{ row('Telephone', application.payer_tel) }}
+        {{ row('Mobile', application.payer_mobile) }}
+        {{ row('Email', application.payer_email) }}
+        {{ row('Address', application.payer_address) }}
+      </div>
+
+      {# Academic #}
+      {{ detail_card('Academic Background') }}
+        {{ row('Highest Qualification', application.highest_qualification) }}
+        {{ row('Institution', application.institution_attended) }}
+        {{ row('Year Completed', application.year_completed) }}
+        {{ row('RPL Application', 'Yes' if application.has_rpl else 'No') }}
+        {% if application.rpl_details %}{{ row('RPL Details', application.rpl_details) }}{% endif %}
+        {% if application.subjects_passed %}
+        <div style="padding:7px 0; font-size:0.87rem; border-bottom:1px solid #f8fafc;">
+          <span style="min-width:160px; color:#6b7280; font-weight:500;">Subjects Passed</span>
+          <pre style="margin:8px 0 0; font-family:inherit; white-space:pre-wrap; font-size:0.85rem; color:#111827;">{{ application.subjects_passed }}</pre>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Payment #}
+      {{ detail_card('Payment Details') }}
+        {{ row('Bank', application.payment_bank) }}
+        {{ row('Deposit Reference', application.payment_reference) }}
+        {{ row('Deposit Date', application.payment_date) }}
+        {{ row('Amount', 'E ' ~ application.payment_amount if application.payment_amount else '—') }}
+      </div>
+
+      {# Documents #}
+      {{ detail_card('Uploaded Documents') }}
+        {% if docs %}
+        {% for doc in docs %}
+        <div style="display:flex; align-items:center; gap:14px; padding:10px 0; border-bottom:1px solid #f8fafc;">
+          <span style="font-size:0.83rem; font-weight:600; color:#374151; min-width:160px;">{{ doc.doc_type.replace('_',' ')|title }}</span>
+          <a href="{{ url_for('static', filename=doc.file_url) }}" target="_blank" rel="noopener"
+             style="font-size:0.83rem; font-weight:700; color:#1d4ed8; text-decoration:none;">
+            📄 {{ doc.original_name or 'View File' }}
+          </a>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="font-size:0.87rem; color:#9ca3af;">No documents uploaded.</p>
+        {% endif %}
+      </div>
+
+    </div>
+
+    {# ── SIDEBAR: SCREENING + STATUS UPDATE ── #}
+    <div style="position:sticky; top:24px;">
+      {% set status = application.status or 'draft' %}
+      {% set status_colors = {
+        'draft':        '#6b7280',
+        'submitted':    '#1d4ed8',
+        'under_review': '#854d0e',
+        'missing_docs': '#9a3412',
+        'accepted':     '#166534',
+        'rejected':     '#991b1b',
+      } %}
+      {% set screening = latest_screening %}
+      {% set screening_colors = {
+        'recommended': ('#047857', '#ecfdf5', '#a7f3d0'),
+        'review': ('#b45309', '#fffbeb', '#fde68a'),
+        'needs_info': ('#b91c1c', '#fef2f2', '#fecaca')
+      } %}
+
+      <div style="background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(15,23,42,0.07); padding:24px; margin-bottom:16px;">
+        <h3 style="font-size:0.95rem; font-weight:700; color:#1e3a6e; border-left:3px solid #f58220; padding-left:10px; margin-bottom:18px;">AI Application Screening</h3>
+
+        <form method="POST" style="margin-bottom:18px;">
+          <input type="hidden" name="action" value="run_ai_screening">
+          <button type="submit"
+                  style="width:100%; background:linear-gradient(135deg, #0f172a, #1d4ed8); color:#fff; border:none; border-radius:10px; padding:12px; font-size:0.9rem; font-weight:800; cursor:pointer; transition:opacity 0.2s;">
+            {% if screening %}Run Screening Again{% else %}Run AI Screening{% endif %}
+          </button>
+        </form>
+
+        {% if screening %}
+        {% set screening_tone = screening_colors.get(screening.recommendation, ('#475569', '#f8fafc', '#cbd5e1')) %}
+        <div style="margin-bottom:14px; padding:14px 16px; border-radius:12px; background:{{ screening_tone[1] }}; border:1px solid {{ screening_tone[2] }};">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+            <div>
+              <div style="font-size:0.76rem; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; font-weight:700;">Recommendation</div>
+              <div style="font-size:1rem; font-weight:900; color:{{ screening_tone[0] }}; margin-top:3px;">
+                {{ screening_labels.get(screening.recommendation, 'Review') if screening_labels else 'Review' }}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.76rem; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; font-weight:700;">Screening Score</div>
+              <div style="font-size:1.15rem; font-weight:900; color:#0f172a; margin-top:3px;">{{ screening.screening_score|round|int }}/100</div>
+            </div>
+          </div>
+          <p style="margin:0; font-size:0.85rem; line-height:1.6; color:#334155;">{{ screening.summary or 'No summary available.' }}</p>
+        </div>
+
+        {% if screening.strengths %}
+        <div style="margin-bottom:14px;">
+          <div style="font-size:0.78rem; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Strengths</div>
+          <div style="display:grid; gap:8px;">
+            {% for item in screening.strengths %}
+            <div style="padding:10px 12px; border-radius:10px; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; font-size:0.83rem; font-weight:600;">{{ item }}</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if screening.concerns %}
+        <div style="margin-bottom:14px;">
+          <div style="font-size:0.78rem; font-weight:800; color:#b45309; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Concerns</div>
+          <div style="display:grid; gap:8px;">
+            {% for item in screening.concerns %}
+            <div style="padding:10px 12px; border-radius:10px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-size:0.83rem; font-weight:600;">{{ item }}</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if screening.missing_items %}
+        <div style="margin-bottom:14px;">
+          <div style="font-size:0.78rem; font-weight:800; color:#b91c1c; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Missing Items</div>
+          <div style="display:grid; gap:8px;">
+            {% for item in screening.missing_items %}
+            <div style="padding:10px 12px; border-radius:10px; background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; font-size:0.83rem; font-weight:600;">{{ item }}</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div style="font-size:0.78rem; color:#64748b; border-top:1px dashed #cbd5e1; padding-top:12px;">
+          Source: {{ 'AI + rules' if screening.screening_source == 'ai_plus_rules' else 'Rules only' }}
+          {% if screening.model %}&nbsp;•&nbsp;{{ screening.model }}{% endif %}
+          {% if screening.created_at %}<br><span>{{ (screening.created_at or '')[:16]|replace('T',' ') }}</span>{% endif %}
+        </div>
+        {% else %}
+        <p style="margin:0; font-size:0.85rem; line-height:1.6; color:#64748b;">No screening has been run yet. Start with AI screening to get a readiness score, recommendation, missing items, and review notes.</p>
+        {% endif %}
+      </div>
+
+      <div style="background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(15,23,42,0.07); padding:24px; margin-bottom:16px;">
+        <h3 style="font-size:0.95rem; font-weight:700; color:#1e3a6e; border-left:3px solid #f58220; padding-left:10px; margin-bottom:18px;">Update Status</h3>
+
+        <div style="margin-bottom:18px; padding:12px 16px; border-radius:10px; background:#f9fafb; border:1px solid #e5e7eb;">
+          <span style="font-size:0.78rem; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Current Status</span>
+          <div style="font-size:1rem; font-weight:800; color:{{ status_colors.get(status,'#374151') }}; margin-top:4px;">
+            {{ status|replace('_',' ')|title }}
+          </div>
+        </div>
+
+        <form method="POST">
+          <input type="hidden" name="action" value="update_status">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <label style="font-size:0.82rem; font-weight:600; color:#374151;">Change Status</label>
+            <select name="status" style="font-family:inherit; font-size:0.9rem; border:1.5px solid #e5e7eb; border-radius:10px; padding:10px 14px; color:#111827; background:#fff; appearance:none;">
+              {% for val, label in [('submitted','Submitted'),('under_review','Under Review'),('missing_docs','Missing Documents'),('accepted','Accepted'),('rejected','Rejected')] %}
+              <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <label style="font-size:0.82rem; font-weight:600; color:#374151;">Admin Notes</label>
+            <textarea name="admin_notes" rows="4"
+                      style="font-family:inherit; font-size:0.87rem; border:1.5px solid #e5e7eb; border-radius:10px; padding:10px 14px; color:#111827; resize:vertical; background:#fafbfd;"
+                      placeholder="Add internal notes, missing document requests, etc.">{{ application.admin_notes or '' }}</textarea>
+            <button type="submit"
+                    style="background:#111827; color:#fff; border:none; border-radius:10px; padding:12px; font-size:0.9rem; font-weight:700; cursor:pointer; transition:background 0.2s;">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {% if application.reviewed_by %}
+      <div style="background:#f9fafb; border-radius:12px; padding:14px 16px; font-size:0.82rem; color:#6b7280; border:1px solid #e5e7eb;">
+        <strong style="color:#374151;">Last reviewed by:</strong> {{ application.reviewed_by }}<br>
+        <span>{{ (application.reviewed_at or '')[:16]|replace('T',' ') }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

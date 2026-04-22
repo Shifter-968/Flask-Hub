@@ -1,0 +1,982 @@
+{% extends "base_dashboard.html" %}
+{% set title = classroom.name if classroom else "Classroom" %}
+{% set role = "Classroom" %}
+{% set tabs = ["Stream", "Materials", "Assignments", "People", "Meetings"] %}
+
+{% block content %}
+<style>
+    .classroom-header {
+        background: linear-gradient(135deg, #eef2ff 0%, #dbeafe 100%);
+        padding: 28px;
+        border-radius: 24px;
+        box-shadow: 0 18px 40px rgba(59, 130, 246, 0.12);
+        margin-bottom: 28px;
+        border: 1px solid rgba(59, 130, 246, 0.18);
+    }
+    .classroom-header h1 {
+        margin: 0 0 10px;
+        font-size: 2.4rem;
+        color: #0f172a;
+        letter-spacing: -0.04em;
+    }
+    .classroom-meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 16px;
+    }
+    .meta-card {
+        background: #fff;
+        border-radius: 18px;
+        padding: 18px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+    .meta-card strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #111827;
+    }
+    .page-grid {
+        display: grid;
+        grid-template-columns: 2.2fr 1fr;
+        gap: 24px;
+    }
+    .stream-panel,
+    .sidebar-panel {
+        background: #fff;
+        border-radius: 24px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+        padding: 24px;
+    }
+    .stream-panel h2,
+    .sidebar-panel h2 {
+        margin-top: 0;
+        margin-bottom: 18px;
+        font-size: 1.5rem;
+    }
+    .post-card,
+    .material-card,
+    .assignment-card,
+    .participant-card {
+        padding: 18px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        margin-bottom: 16px;
+    }
+    .post-card header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .post-card header strong {
+        font-size: 1rem;
+    }
+    .post-card p {
+        margin: 0;
+        color: #334155;
+        line-height: 1.7;
+    }
+    .post-form textarea {
+        width: 100%;
+        min-height: 130px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid #cbd5e1;
+        resize: vertical;
+        font-size: 1rem;
+        margin-bottom: 14px;
+    }
+    .post-form input[type="file"] {
+        display: block;
+        margin-bottom: 14px;
+    }
+    .post-form button {
+        padding: 14px 24px;
+        border-radius: 999px;
+        border: none;
+        background: #2563eb;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .empty-state {
+        text-align: center;
+        color: #64748b;
+        padding: 36px 0;
+    }
+    .sidebar-section {
+        margin-bottom: 20px;
+    }
+    .sidebar-section:last-child {
+        margin-bottom: 0;
+    }
+    .sidebar-section ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .sidebar-section li {
+        margin-bottom: 12px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    .sidebar-section li:last-child {
+        margin-bottom: 0;
+    }
+    .sidebar-section li strong {
+        display: block;
+        font-size: 0.98rem;
+        margin-bottom: 6px;
+    }
+    .sidebar-section li span {
+        font-size: 0.94rem;
+        color: #475569;
+    }
+    .breadcrumbs {
+        margin-bottom: 18px;
+        color: #475569;
+        font-size: 0.95rem;
+    }
+    .breadcrumbs a {
+        color: #2563eb;
+        text-decoration: none;
+    }
+    .breadcrumbs a:hover {
+        text-decoration: underline;
+    }
+    @media (max-width: 1080px) {
+        .page-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+{% set dashboard_url = url_for('login') %}
+{% if session.get('teacher_id') %}
+    {% set dashboard_url = url_for('teacher_dashboard', school_id=session.get('school_id')) %}
+{% elif session.get('lecturer_id') %}
+    {% set dashboard_url = url_for('lecturer_dashboard', school_id=session.get('school_id')) %}
+{% elif session.get('user_id') %}
+    {% set dashboard_url = url_for('student_dashboard', school_id=session.get('school_id')) %}
+{% endif %}
+<div class="breadcrumbs">
+    <a href="{{ dashboard_url }}">Back to dashboard</a> • {{ classroom.name }}
+</div>
+
+<div class="classroom-header">
+    <h1>{{ classroom.name }}</h1>
+    <div class="classroom-meta">
+        <div class="meta-card">
+            <strong>Created by</strong>
+            {{ created_by or "Teacher" }}
+        </div>
+        <div class="meta-card">
+            <strong>School</strong>
+            {{ school_name or "Unknown School" }}
+        </div>
+    </div>
+</div>
+
+<div class="page-grid">
+    <div class="stream-panel">
+        {% if show_join_prompt %}
+            <section>
+                <h2>Join this classroom</h2>
+                <div class="empty-state">
+                    This classroom is invite-only. Join to access the stream, materials, and assignments.
+                </div>
+                <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}">
+                    <input type="hidden" name="action" value="join_classroom">
+                    <button type="submit" class="crystal-button" style="font-size: 14px; padding: 12px 22px;">Join Classroom</button>
+                </form>
+            </section>
+        {% else %}
+            <section>
+                <h2>Classroom Stream</h2>
+                {% if posts %}
+                    {% for post in posts %}
+                        <article class="post-card">
+                            <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <strong>{{ post.author_name or 'Unknown' }}</strong>
+                                    <span>{{ post.created_at or 'Just now' }}</span>
+                                </div>
+                            </header>
+                            <p>{{ post.content }}</p>
+                            {% if post.attachment_name %}
+                            <div style="margin-top:12px;">
+                                <a href="{{ post.attachment_url }}" target="_blank" class="crystal-button" style="padding: 10px 18px;">Download {{ post.attachment_name }}</a>
+                            </div>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">No classroom activity yet. Teacher posts, files, and assignment updates will show here.</div>
+                {% endif %}
+            </section>
+
+            <section class="post-form">
+                <h2>Post to Classroom</h2>
+                <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="post_stream">
+                    <textarea name="content" placeholder="Write an announcement, assignment instructions, or a quick update..."></textarea>
+                    <input type="file" name="attachment">
+                    <button type="submit">Publish</button>
+                </form>
+                <p style="margin-top:12px; color:#475569;">Use this space to share announcements, media, or classroom updates.</p>
+            </section>
+
+            {% if session.get('role') in ['teacher', 'lecturer'] %}
+        <section class="post-form">
+            <h2>Upload Classroom Content</h2>
+            <form id="classroomUploadForm" method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_classroom_resource">
+                <select id="uploadTypeSelect" name="upload_type" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:12px;" required>
+                    <option value="">Choose upload type</option>
+                    <option value="material">Learning Material</option>
+                    <option value="assignment">Assignment</option>
+                </select>
+                <input id="resourceTitleInput" type="text" name="resource_title" placeholder="Title" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:12px;">
+                <textarea id="resourceDescriptionInput" name="resource_description" placeholder="Description" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:12px;"></textarea>
+                <input id="resourceDueDateInput" type="date" name="resource_due_date" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:12px;">
+                <p id="resourceDueDateHelper" style="margin:-4px 0 12px; color:#64748b; font-size:0.9rem;">Due date is used for assignments only.</p>
+                <input id="resourceFileInput" type="file" name="resource_file">
+                <p id="resourceFileHelper" style="margin:8px 0 12px; color:#64748b; font-size:0.9rem;">Attach a file if needed. For materials, file-only upload is allowed.</p>
+                <button id="resourceSubmitButton" type="submit">Upload</button>
+            </form>
+            <p style="margin-top:12px; color:#475569;">Choose Assignment to store on the Assignments panel, or Learning Material for the Materials panel.</p>
+        </section>
+
+        <section class="post-form">
+            <h2>Instructor AI Lab</h2>
+            {% if not instructor_ai_enabled %}
+            <div style="margin-bottom:10px; padding:10px 12px; border-radius:10px; border:1px solid #fde68a; background:#fffbeb; color:#92400e; font-size:0.9rem;">
+                Premium feature preview: Instructor AI tools are currently disabled. They will activate once paid-plan billing is enabled.
+            </div>
+            {% endif %}
+            <form id="instructorAiForm" enctype="multipart/form-data" style="display:grid; gap:10px;">
+                <fieldset style="border:none; padding:0; margin:0;" {% if not instructor_ai_enabled %}disabled{% endif %}>
+                <select id="instructorAiTask" name="task" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1;">
+                    <option value="generate_assessment">Generate Test/Quiz From Notes</option>
+                    <option value="mark_submission">AI Mark A Submission (with Rubric/Guide)</option>
+                    <option value="detect_ai_content">Estimate AI-Written Content %</option>
+                    <option value="detect_similarity">Plagiarism Similarity Scan</option>
+                </select>
+
+                <textarea id="instructorAiMessage" name="message" placeholder="Describe what you want (e.g., 20-mark test from lectures 1-3 with scenario questions)." style="width:100%; min-height:100px; padding:12px; border-radius:12px; border:1px solid #cbd5e1;"></textarea>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <select id="instructorAssessmentType" name="assessment_type" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cbd5e1;">
+                        <option value="quiz">Quiz</option>
+                        <option value="test">Test</option>
+                        <option value="exam_practice">Exam Practice</option>
+                        <option value="worksheet">Worksheet</option>
+                    </select>
+                    <input id="instructorQuestionCount" type="number" name="question_count" min="3" max="25" value="8" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cbd5e1;" />
+                </div>
+
+                <div id="instructorAssignmentRow" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <select id="instructorAssignmentId" name="assignment_id" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cbd5e1;">
+                        <option value="">Select assignment</option>
+                        {% for assignment in assignments %}
+                        <option value="{{ assignment.id }}">{{ assignment.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="instructorSubmissionId" name="submission_id" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cbd5e1;">
+                        <option value="">Select submission</option>
+                        {% for submission in submissions %}
+                        <option value="{{ submission.id }}" data-assignment="{{ submission.assignment_id }}">{{ submission.submitted_by_name or 'Student' }} - {{ submission.submission_label or 'Submission' }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <textarea id="instructorAnswerKey" name="answer_key" placeholder="Optional answer key keywords / model answer points" style="width:100%; min-height:80px; padding:12px; border-radius:12px; border:1px solid #cbd5e1;"></textarea>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <div>
+                        <label style="font-size:0.85rem;color:#475569;">Upload notes/media (any type)</label>
+                        <input id="instructorNotesFiles" type="file" name="notes_files" multiple>
+                    </div>
+                    <div>
+                        <label style="font-size:0.85rem;color:#475569;">Upload rubric</label>
+                        <input id="instructorRubricFile" type="file" name="rubric_file">
+                    </div>
+                    <div>
+                        <label style="font-size:0.85rem;color:#475569;">Upload marking guide</label>
+                        <input id="instructorGuideFile" type="file" name="marking_guide_file">
+                    </div>
+                </div>
+
+                <button type="button" id="instructorAiRun" class="crystal-button" style="margin:0; width:max-content;">Run Instructor AI</button>
+                </fieldset>
+            </form>
+            <div id="instructorAiOutput" class="empty-state" style="text-align:left; padding:14px; border:1px solid #dbe2f5; border-radius:12px; background:#f8fafc; margin-top:12px; white-space:pre-wrap;">{% if instructor_ai_enabled %}Instructor AI ready. Choose a task and click Run Instructor AI.{% else %}Instructor AI is disabled until premium features are enabled.{% endif %}</div>
+            <p style="margin-top:12px; color:#475569;">AI output is advisory. Teachers/lecturers must verify marks and integrity flags before final decisions.</p>
+        </section>
+
+        <section id="premiumBulkAiSection" class="post-form" style="display:none;">
+            <h2>Premium AI Bulk Marking Table</h2>
+            <div style="margin-bottom:10px; padding:10px 12px; border-radius:10px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; font-size:0.9rem;">
+                Auto-generated by AI when premium is active. This section stays hidden while premium is disabled.
+            </div>
+            <div id="premiumBulkAiMeta" style="margin-bottom:10px; color:#64748b; font-size:0.88rem;">Preparing premium table...</div>
+            <div id="premiumBulkAiTableWrap" style="overflow-x:auto; border:1px solid #dbe2f5; border-radius:12px; background:#ffffff; padding:10px;"></div>
+            <p style="margin-top:10px; color:#475569; font-size:0.86rem;">This table is draft intelligence only: score, AI-content estimate, and plagiarism signals must be reviewed by the lecturer/teacher.</p>
+        </section>
+        {% endif %}
+
+        <section class="post-form" id="meetings">
+            <h2>Virtual Classroom Stream</h2>
+            <p style="margin:0 0 10px; color:#475569;">Create secure call links for group study, project check-ins, and live teacher sessions. Everyone in class can create and join with password.</p>
+
+            <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:grid; gap:10px; margin-bottom:14px;">
+                <input type="hidden" name="action" value="create_virtual_call">
+                <input type="text" name="call_title" placeholder="Meeting title (e.g., Group Project Sprint)" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1;" required>
+                <input type="password" name="call_password" placeholder="Set call password" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1;" minlength="4" required>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div>
+                        <label style="display:block; margin-bottom:4px; font-size:0.84rem; color:#475569;">Scheduled Start (optional)</label>
+                        <input type="datetime-local" name="call_scheduled_start" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom:4px; font-size:0.84rem; color:#475569;">Scheduled End (optional)</label>
+                        <input type="datetime-local" name="call_scheduled_end" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1;">
+                    </div>
+                </div>
+                <button type="submit" class="crystal-button" style="margin:0; width:max-content;">Create Call Link</button>
+            </form>
+
+            {% if virtual_calls %}
+            <div style="display:grid; gap:10px;">
+                {% for call in virtual_calls %}
+                <article style="border:1px solid #dbe2f5; border-radius:12px; padding:12px; background:#f8fafc;">
+                    <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <div>
+                            <strong style="color:#1e293b;">{{ call.title }}</strong>
+                            <div style="font-size:0.84rem; color:#64748b; margin-top:4px;">Host: {{ call.created_by }}{% if call.created_at %} | Created: {{ call.created_at[:16].replace('T', ' ') }}{% endif %}</div>
+                            {% if call.scheduled_start or call.scheduled_end %}
+                            <div style="font-size:0.78rem; color:#64748b; margin-top:3px;">
+                                {% if call.scheduled_start %}Start: {{ call.scheduled_start[:16].replace('T', ' ') }}{% endif %}
+                                {% if call.scheduled_end %} | End: {{ call.scheduled_end[:16].replace('T', ' ') }}{% endif %}
+                            </div>
+                            {% endif %}
+                            <div style="font-size:0.78rem; color:#64748b; margin-top:3px;">Participants: {{ call.participant_count or 0 }} | Join events: {{ call.join_events or 0 }}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <span style="font-size:0.74rem; font-weight:700; color:#1d4ed8; background:#dbeafe; border:1px solid #bfdbfe; border-radius:999px; padding:3px 8px;">Password Protected</span>
+                            {% if call.status == 'live' %}
+                            <span style="font-size:0.74rem; font-weight:700; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; border-radius:999px; padding:3px 8px;">Live</span>
+                            {% elif call.status == 'scheduled' %}
+                            <span style="font-size:0.74rem; font-weight:700; color:#92400e; background:#ffedd5; border:1px solid #fed7aa; border-radius:999px; padding:3px 8px;">Scheduled</span>
+                            {% else %}
+                            <span style="font-size:0.74rem; font-weight:700; color:#334155; background:#e2e8f0; border:1px solid #cbd5e1; border-radius:999px; padding:3px 8px;">Ended</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if call.status != 'ended' %}
+                    <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                        <input type="hidden" name="action" value="join_virtual_call">
+                        <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
+                        <input type="password" name="call_password" placeholder="Enter call password" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:220px;" required>
+                        <button type="submit" class="crystal-button" style="margin:0; padding:9px 16px;">Join Call</button>
+                    </form>
+                    {% else %}
+                    <div style="margin-top:10px; color:#64748b; font-size:0.85rem;">This call is closed and no longer accepting joins.</div>
+                    {% endif %}
+
+                    {% if call.is_host %}
+                    <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        {% if call.status != 'ended' %}
+                        <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <input type="hidden" name="action" value="virtual_call_end">
+                            <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
+                            <button type="submit" class="crystal-button" style="margin:0; padding:8px 14px; background:#dc2626; border-color:#dc2626; color:#fff;">End Call</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <input type="hidden" name="action" value="virtual_call_rotate_password">
+                            <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
+                            <input type="password" name="new_call_password" minlength="4" placeholder="New password" style="padding:8px 10px; border-radius:10px; border:1px solid #cbd5e1; min-width:180px;" required>
+                            <button type="submit" class="crystal-button" style="margin:0; padding:8px 14px;">Rotate Password</button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if call.status == 'ended' and session.get('role') in ['teacher', 'lecturer'] and instructor_ai_enabled %}
+                    <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+                        <textarea id="sessionNotesHostInput{{ call.post_id }}" placeholder="Optional host notes to guide AI summary..." style="width:100%; min-height:70px; padding:10px; border-radius:10px; border:1px solid #cbd5e1;"></textarea>
+                        <button type="button" class="crystal-button generateSessionNotesBtn" data-call-id="{{ call.post_id }}" style="margin:8px 0 0; padding:8px 14px;">Generate Session Notes</button>
+                        <div id="sessionNotesOutput{{ call.post_id }}" style="margin-top:8px; border:1px solid #dbe2f5; border-radius:10px; background:#ffffff; padding:10px; color:#334155; white-space:pre-wrap;">{% if call.session_summary %}Summary: {{ call.session_summary }}{% if call.session_action_items %}
+
+Action Items:
+{% for item in call.session_action_items %}- {{ item }}
+{% endfor %}{% endif %}{% if call.session_followups %}
+
+Follow-ups:
+{% for item in call.session_followups %}- {{ item }}
+{% endfor %}{% endif %}{% if call.session_notes_generated_at %}
+
+Generated: {{ call.session_notes_generated_at[:16].replace('T', ' ') }}{% endif %}{% else %}No session notes yet for this ended call.{% endif %}</div>
+                    </div>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding:12px 0;">No active virtual call links yet. Create one to start a live meeting.</div>
+            {% endif %}
+
+            {% if session.get('role') in ['teacher', 'lecturer'] and instructor_ai_enabled %}
+            <div style="margin-top:14px; border-top:1px solid #dbe2f5; padding-top:12px;">
+                <h3 style="margin:0 0 8px; color:#1e293b; font-size:1rem;">Premium Meeting Analytics</h3>
+                <div id="virtualCallAnalyticsMeta" style="font-size:0.84rem; color:#64748b; margin-bottom:8px;">Calls: {{ virtual_call_analytics.total_calls or 0 }} | Live: {{ virtual_call_analytics.live_calls or 0 }} | Scheduled: {{ virtual_call_analytics.scheduled_calls or 0 }} | Ended: {{ virtual_call_analytics.ended_calls or 0 }}</div>
+                <button type="button" id="runVirtualCallAnalytics" class="crystal-button" style="margin:0; padding:8px 14px;">Generate AI Meeting Insight</button>
+                <div id="virtualCallAnalyticsOutput" style="margin-top:10px; border:1px solid #dbe2f5; border-radius:10px; background:#ffffff; padding:10px; color:#334155; white-space:pre-wrap;">Click the button to generate premium AI analytics for virtual meeting activity.</div>
+            </div>
+            {% endif %}
+        </section>
+
+        {% if session.get('role') in ['student', 'learner'] %}
+        <section class="post-form">
+            <h2>Submit Assignment</h2>
+            {% if assignments %}
+                <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="submit_assignment">
+                    <select name="assignment_id" style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:12px;" required>
+                        <option value="">Select assignment</option>
+                        {% for assignment in assignments %}
+                        <option value="{{ assignment.id }}">{{ assignment.title }}{% if assignment.due_date %} — due {{ assignment.due_date }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <textarea name="submission_text" placeholder="Write your submission note or answers..." style="width:100%; padding:12px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:12px;"></textarea>
+                    <input type="file" name="submission_file">
+                    <button type="submit">Submit Assignment</button>
+                </form>
+            {% else %}
+                <div class="empty-state">No assignments available yet. Once the teacher posts an assignment, you can submit here.</div>
+            {% endif %}
+        </section>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <aside class="sidebar-panel">
+        <section class="sidebar-section">
+            <h2>Materials</h2>
+            {% if materials %}
+                <ul>
+                    {% for material in materials %}
+                        <li>
+                            <strong>{{ material.title }}</strong>
+                            <span>{{ material.description or 'Uploaded file' }}</span>
+                            {% if material.file_path %}
+                                <div style="margin-top:8px;">
+                                    <a href="{{ url_for('static', filename=material.file_path) }}" target="_blank" class="crystal-button" style="padding: 8px 14px;">Download</a>
+                                </div>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">No learning materials uploaded yet.</div>
+            {% endif %}
+        </section>
+
+        <section class="sidebar-section">
+            <h2>Assignments</h2>
+            {% if assignments %}
+                <ul>
+                    {% for assignment in assignments %}
+                        <li>
+                            <strong>{{ assignment.title }}</strong>
+                            <span>Due {{ assignment.due_date or 'TBD' }}</span>
+                            {% if assignment.file_path %}
+                                <div style="margin-top:8px;">
+                                    <a href="{{ url_for('static', filename=assignment.file_path) }}" target="_blank" class="crystal-button" style="padding: 8px 14px;">Download Brief</a>
+                                </div>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">No assignments posted yet.</div>
+            {% endif %}
+        </section>
+
+        {% if session.get('role') in ['teacher', 'lecturer'] %}
+        <section class="sidebar-section">
+            <h2>Recent Submissions</h2>
+            {% if submissions %}
+                <ul>
+                    {% for submission in submissions[:5] %}
+                        <li>
+                            <strong>{{ submission.teacher_submission_label or ((submission.submitted_by_name or 'Student') ~ ' submission') }}</strong>
+                            <span style="display: block; margin-top: 4px; color: #64748b; font-size: 0.9em;">
+                                {{ submission.submission_label or 'Assignment submission' }}
+                                {% if submission.submitted_at %}
+                                    <br><small>Submitted: {{ submission.submitted_at[:10] }}</small>
+                                {% endif %}
+                            </span>
+                            {% if submission.file_path %}
+                                <div style="margin-top:8px;">
+                                    <a href="{{ url_for('static', filename=submission.file_path) }}" target="_blank" class="crystal-button" style="padding: 8px 14px;">Download</a>
+                                </div>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">No assignment submissions yet.</div>
+            {% endif %}
+        </section>
+        {% elif session.get('role') in ['student', 'learner'] %}
+        <section class="sidebar-section">
+            <h2>My Submissions</h2>
+            {% if my_submissions %}
+                <ul>
+                    {% for submission in my_submissions %}
+                        <li>
+                            <strong>{{ submission.submission_label or 'Assignment submission' }}</strong>
+                            <span>{{ submission.submitted_at or 'Just now' }}</span>
+                            {% if submission.file_path %}
+                                <div style="margin-top:8px;">
+                                    <a href="{{ url_for('static', filename=submission.file_path) }}" target="_blank" class="crystal-button" style="padding: 8px 14px;">Download</a>
+                                </div>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">No submissions recorded yet.</div>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <section class="sidebar-section">
+            <h2>Class Members</h2>
+
+            {% if session.get('role') in ['teacher', 'lecturer'] %}
+            <!-- Add student/learner by search -->
+            <div style="margin-bottom:16px;">
+                <form id="addStudentForm" method="post" action="{{ url_for('add_student_to_classroom', classroom_id=classroom.id) }}" style="display:flex;flex-direction:column;gap:8px;">
+                    <input type="text" id="studentSearch" placeholder="Search name or ID…"
+                           autocomplete="off"
+                           style="padding:8px 12px;border-radius:10px;border:1px solid #cbd5e1;font-size:0.92rem;width:100%;">
+                    <div id="studentResults" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;max-height:200px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                    <input type="hidden" name="target_id" id="targetId">
+                    <input type="hidden" name="target_type" id="targetType">
+                    <button type="submit" id="addStudentBtn"
+                            style="padding:8px 0;border-radius:10px;background:#2563eb;color:#fff;border:none;font-weight:700;cursor:pointer;display:none;">
+                        ＋ Add to Class
+                    </button>
+                </form>
+            </div>
+
+            <script>
+            (function(){
+                const uploadTypeSelect = document.getElementById('uploadTypeSelect');
+                const resourceTitleInput = document.getElementById('resourceTitleInput');
+                const resourceDescriptionInput = document.getElementById('resourceDescriptionInput');
+                const resourceDueDateInput = document.getElementById('resourceDueDateInput');
+                const resourceDueDateHelper = document.getElementById('resourceDueDateHelper');
+                const resourceFileInput = document.getElementById('resourceFileInput');
+                const resourceFileHelper = document.getElementById('resourceFileHelper');
+                const resourceSubmitButton = document.getElementById('resourceSubmitButton');
+
+                function updateUploadUi() {
+                    if (!uploadTypeSelect || !resourceTitleInput || !resourceDescriptionInput || !resourceDueDateInput || !resourceFileInput || !resourceSubmitButton) {
+                        return;
+                    }
+
+                    const selectedType = uploadTypeSelect.value;
+                    const isAssignment = selectedType === 'assignment';
+
+                    resourceTitleInput.placeholder = isAssignment ? 'Assignment title (required)' : 'Material title (optional if file uploaded)';
+                    resourceDescriptionInput.placeholder = isAssignment ? 'Assignment instructions' : 'Material description';
+                    resourceFileInput.setAttribute('aria-label', isAssignment ? 'Assignment file' : 'Material file');
+                    resourceSubmitButton.textContent = isAssignment ? 'Create Assignment' : 'Upload Material';
+                    if (resourceDueDateHelper) {
+                        resourceDueDateHelper.textContent = isAssignment
+                            ? 'Set when learners must submit this assignment.'
+                            : 'Due date is not needed for learning materials.';
+                    }
+                    if (resourceFileHelper) {
+                        resourceFileHelper.textContent = isAssignment
+                            ? 'Attach assignment brief/instructions file (optional).'
+                            : 'Attach learning file (PDF, slides, notes, etc.).';
+                    }
+
+                    resourceTitleInput.required = isAssignment;
+                    resourceDueDateInput.disabled = !isAssignment;
+                    resourceDueDateInput.style.opacity = isAssignment ? '1' : '0.55';
+                    if (!isAssignment) {
+                        resourceDueDateInput.value = '';
+                    }
+
+                    if (!selectedType) {
+                        resourceTitleInput.placeholder = 'Title';
+                        resourceDescriptionInput.placeholder = 'Description';
+                        resourceSubmitButton.textContent = 'Upload';
+                        if (resourceDueDateHelper) {
+                            resourceDueDateHelper.textContent = 'Due date is used for assignments only.';
+                        }
+                        if (resourceFileHelper) {
+                            resourceFileHelper.textContent = 'Attach a file if needed. For materials, file-only upload is allowed.';
+                        }
+                        resourceTitleInput.required = false;
+                        resourceDueDateInput.disabled = false;
+                        resourceDueDateInput.style.opacity = '1';
+                    }
+                }
+
+                if (uploadTypeSelect) {
+                    uploadTypeSelect.addEventListener('change', updateUploadUi);
+                    updateUploadUi();
+                }
+
+                const searchInput = document.getElementById('studentSearch');
+                const resultsBox  = document.getElementById('studentResults');
+                const targetId    = document.getElementById('targetId');
+                const targetType  = document.getElementById('targetType');
+                const addBtn      = document.getElementById('addStudentBtn');
+                const instructorAiTask = document.getElementById('instructorAiTask');
+                const instructorAiMessage = document.getElementById('instructorAiMessage');
+                const instructorAssessmentType = document.getElementById('instructorAssessmentType');
+                const instructorQuestionCount = document.getElementById('instructorQuestionCount');
+                const instructorAssignmentRow = document.getElementById('instructorAssignmentRow');
+                const instructorAssignmentId = document.getElementById('instructorAssignmentId');
+                const instructorSubmissionId = document.getElementById('instructorSubmissionId');
+                const instructorAnswerKey = document.getElementById('instructorAnswerKey');
+                const instructorNotesFiles = document.getElementById('instructorNotesFiles');
+                const instructorRubricFile = document.getElementById('instructorRubricFile');
+                const instructorGuideFile = document.getElementById('instructorGuideFile');
+                const instructorAiRun = document.getElementById('instructorAiRun');
+                const instructorAiOutput = document.getElementById('instructorAiOutput');
+                const premiumBulkAiSection = document.getElementById('premiumBulkAiSection');
+                const premiumBulkAiMeta = document.getElementById('premiumBulkAiMeta');
+                const premiumBulkAiTableWrap = document.getElementById('premiumBulkAiTableWrap');
+                const runVirtualCallAnalyticsBtn = document.getElementById('runVirtualCallAnalytics');
+                const virtualCallAnalyticsOutput = document.getElementById('virtualCallAnalyticsOutput');
+                const schoolId    = {{ classroom.school_id | tojson }};
+                const isUniversity = {{ (classroom.lecturer_id is not none) | tojson }};
+                let debounce;
+
+                function updateInstructorAiUi() {
+                    if (!instructorAiTask) return;
+                    const task = instructorAiTask.value;
+                    const needsSubmission = task === 'mark_submission' || task === 'detect_ai_content';
+                    const needsSimilarity = task === 'detect_similarity';
+                    const needsGenerator = task === 'generate_assessment';
+
+                    if (instructorAssignmentRow) {
+                        instructorAssignmentRow.style.display = (needsSubmission || needsSimilarity) ? 'grid' : 'none';
+                    }
+                    if (instructorAnswerKey) {
+                        instructorAnswerKey.style.display = task === 'mark_submission' ? 'block' : 'none';
+                    }
+                    if (instructorAssessmentType) {
+                        instructorAssessmentType.disabled = !needsGenerator;
+                    }
+                    if (instructorQuestionCount) {
+                        instructorQuestionCount.disabled = !needsGenerator;
+                    }
+
+                    if (instructorAiMessage) {
+                        if (needsGenerator) {
+                            instructorAiMessage.placeholder = 'Describe the test/quiz you want from your notes and class content.';
+                        } else if (task === 'mark_submission') {
+                            instructorAiMessage.placeholder = 'Optional marking instructions (e.g., prioritize application and reasoning).';
+                        } else if (task === 'detect_ai_content') {
+                            instructorAiMessage.placeholder = 'Optional note for AI content analysis.';
+                        } else {
+                            instructorAiMessage.placeholder = 'Run similarity scan for this assignment or whole classroom submissions.';
+                        }
+                    }
+                }
+
+                function filterSubmissionOptions() {
+                    if (!instructorAssignmentId || !instructorSubmissionId) return;
+                    const assignment = instructorAssignmentId.value;
+                    Array.from(instructorSubmissionId.options).forEach((option, idx) => {
+                        if (idx === 0) {
+                            option.hidden = false;
+                            return;
+                        }
+                        const optionAssignment = option.getAttribute('data-assignment') || '';
+                        option.hidden = assignment ? optionAssignment !== assignment : false;
+                    });
+                    if (instructorSubmissionId.selectedOptions.length && instructorSubmissionId.selectedOptions[0].hidden) {
+                        instructorSubmissionId.value = '';
+                    }
+                }
+
+                async function runInstructorAi() {
+                    if (!instructorAiRun || !instructorAiTask || !instructorAiOutput) return;
+                    if (!{{ instructor_ai_enabled | tojson }}) {
+                        instructorAiOutput.textContent = 'Instructor AI is disabled until premium is enabled.';
+                        return;
+                    }
+                    instructorAiOutput.textContent = 'Running Instructor AI...';
+
+                    const formData = new FormData();
+                    formData.append('task', instructorAiTask.value);
+                    formData.append('classroom_id', String({{ classroom.id|tojson }}));
+                    if (instructorAiMessage && instructorAiMessage.value.trim()) formData.append('message', instructorAiMessage.value.trim());
+                    if (instructorAssessmentType) formData.append('assessment_type', instructorAssessmentType.value);
+                    if (instructorQuestionCount) formData.append('question_count', instructorQuestionCount.value || '8');
+                    if (instructorAssignmentId && instructorAssignmentId.value) formData.append('assignment_id', instructorAssignmentId.value);
+                    if (instructorSubmissionId && instructorSubmissionId.value) formData.append('submission_id', instructorSubmissionId.value);
+                    if (instructorAnswerKey && instructorAnswerKey.value.trim()) formData.append('answer_key', instructorAnswerKey.value.trim());
+
+                    if (instructorNotesFiles && instructorNotesFiles.files) {
+                        Array.from(instructorNotesFiles.files).forEach(file => formData.append('notes_files', file));
+                    }
+                    if (instructorRubricFile && instructorRubricFile.files && instructorRubricFile.files[0]) {
+                        formData.append('rubric_file', instructorRubricFile.files[0]);
+                    }
+                    if (instructorGuideFile && instructorGuideFile.files && instructorGuideFile.files[0]) {
+                        formData.append('marking_guide_file', instructorGuideFile.files[0]);
+                    }
+
+                    try {
+                        const response = await fetch('{{ url_for('ai_instructor_assistant') }}', {
+                            method: 'POST',
+                            body: formData,
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            instructorAiOutput.textContent = data.error || 'Instructor AI request failed.';
+                            return;
+                        }
+
+                        const task = instructorAiTask.value;
+                        if (task === 'generate_assessment') {
+                            const assessment = data.assessment || {};
+                            const questions = Array.isArray(assessment.questions) ? assessment.questions : [];
+                            const questionText = questions.map((q, i) => `${i + 1}. ${q.question || 'Question'}\nKey: ${q.answer_key || 'N/A'}\nMarks: ${q.marks || ''} ${q.difficulty ? `(${q.difficulty})` : ''}`).join('\n\n');
+                            instructorAiOutput.textContent = `${assessment.title || 'Assessment'}\n\nInstructions: ${assessment.instructions || 'N/A'}\nTotal Marks: ${assessment.total_marks || 'N/A'}\n\n${questionText || 'No questions generated.'}`;
+                        } else if (task === 'mark_submission') {
+                            const strengths = (data.strengths || []).map(s => `- ${s}`).join('\n');
+                            const gaps = (data.gaps || []).map(g => `- ${g}`).join('\n');
+                            const similarities = (data.similarity_matches || []).map(p => `- ${p.student_a} vs ${p.student_b}: ${p.similarity_pct}%`).join('\n');
+                            instructorAiOutput.textContent = `Student: ${data.student || 'Student'}\nAssignment: ${data.assignment || 'Assignment'}\nScore: ${data.score || data.draft_score || 'N/A'}/${data.out_of || 100}\nAI-content estimate: ${data.ai_content_pct || 0}%\n\nStrengths:\n${strengths || '- None listed'}\n\nGaps:\n${gaps || '- None listed'}\n\nFeedback:\n${data.feedback || 'N/A'}\n\nSimilarity Matches:\n${similarities || '- No major similarities found'}`;
+                        } else if (task === 'detect_ai_content') {
+                            const signals = (data.signals || []).map(s => `- ${s}`).join('\n');
+                            instructorAiOutput.textContent = `Student: ${data.student || 'Student'}\nAI-content estimate: ${data.ai_content_pct || 0}%\nConfidence: ${data.confidence || 'medium'}\n\nSignals:\n${signals || '- None'}\n\n${data.warning || ''}`;
+                        } else {
+                            const pairs = Array.isArray(data.pairs) ? data.pairs : [];
+                            const text = pairs.map((p, i) => `${i + 1}. ${p.student_a} vs ${p.student_b} -> ${p.similarity_pct}% (${p.risk})`).join('\n');
+                            instructorAiOutput.textContent = `Similarity pairs flagged: ${data.pair_count || 0}\n\n${text || 'No suspicious similarity pairs found.'}\n\n${data.note || ''}`;
+                        }
+                    } catch (err) {
+                        instructorAiOutput.textContent = 'Network error while running Instructor AI.';
+                    }
+                }
+
+                function escapeHtml(value) {
+                    return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+
+                function renderPremiumBulkTable(rows) {
+                    if (!premiumBulkAiTableWrap) return;
+                    if (!Array.isArray(rows) || !rows.length) {
+                        premiumBulkAiTableWrap.innerHTML = '<div style="padding:8px;color:#64748b;">No submissions found for premium bulk table yet.</div>';
+                        return;
+                    }
+                    const header = '<tr><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">Submitter</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">Assignment</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">Score</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">AI Content %</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">Plagiarism %</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">Risk</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;">AI Summary</th></tr>';
+                    const body = rows.map((row) => {
+                        const risk = (row.plagiarism_risk || 'low').toLowerCase();
+                        let riskColor = '#16a34a';
+                        if (risk === 'medium') riskColor = '#d97706';
+                        if (risk === 'high') riskColor = '#dc2626';
+                        return `<tr>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${escapeHtml(row.submitter || 'Student')}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${escapeHtml(row.assignment_title || 'Assignment')}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${escapeHtml(`${row.score || 0}/${row.out_of || 100}`)}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${escapeHtml(`${row.ai_content_pct || 0}%`)}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;">${escapeHtml(`${row.plagiarism_similarity_pct || 0}%`)}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;"><span style="display:inline-block;padding:2px 7px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;color:${riskColor};font-weight:700;">${escapeHtml(risk)}</span></td>
+                            <td style="padding:8px;border-bottom:1px solid #f1f5f9;max-width:320px;">${escapeHtml(row.score_summary || '')}</td>
+                        </tr>`;
+                    }).join('');
+                    premiumBulkAiTableWrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.86rem;">${header}${body}</table>`;
+                }
+
+                async function loadPremiumBulkAiTable() {
+                    if (!premiumBulkAiMeta || !premiumBulkAiTableWrap) return;
+                    premiumBulkAiMeta.textContent = 'Generating AI bulk table...';
+                    try {
+                        const response = await fetch('{{ url_for('ai_instructor_bulk_marking_table') }}', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ classroom_id: {{ classroom.id|tojson }} })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            premiumBulkAiMeta.textContent = data.error || 'Could not generate premium bulk table.';
+                            premiumBulkAiTableWrap.innerHTML = '';
+                            return;
+                        }
+                        const counts = data.counts || {};
+                        premiumBulkAiMeta.textContent = `Rows: ${counts.rows || 0} • Assignments: ${counts.assignments || 0} • Submissions: ${counts.submissions || 0}`;
+                        renderPremiumBulkTable(data.rows || []);
+                    } catch (err) {
+                        premiumBulkAiMeta.textContent = 'Network error while generating premium bulk table.';
+                        premiumBulkAiTableWrap.innerHTML = '';
+                    }
+                }
+
+                async function runVirtualCallAnalytics() {
+                    if (!runVirtualCallAnalyticsBtn || !virtualCallAnalyticsOutput) return;
+                    virtualCallAnalyticsOutput.textContent = 'Generating premium meeting analytics...';
+                    try {
+                        const response = await fetch('{{ url_for('ai_instructor_virtual_call_analytics') }}', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ classroom_id: {{ classroom.id|tojson }} })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            virtualCallAnalyticsOutput.textContent = data.error || 'Could not generate meeting analytics.';
+                            return;
+                        }
+                        const summary = data.summary || {};
+                        const headline = `Total calls: ${summary.total_calls || 0} | Live: ${summary.live_calls || 0} | Scheduled: ${summary.scheduled_calls || 0} | Ended: ${summary.ended_calls || 0} | Join events: ${summary.join_event_sum || 0}`;
+                        virtualCallAnalyticsOutput.textContent = `${headline}\n\n${data.insight || 'No AI insight generated.'}`;
+                    } catch (err) {
+                        virtualCallAnalyticsOutput.textContent = 'Network error while generating virtual call analytics.';
+                    }
+                }
+
+                async function generateSessionNotes(callId) {
+                    const output = document.getElementById(`sessionNotesOutput${callId}`);
+                    const hostInput = document.getElementById(`sessionNotesHostInput${callId}`);
+                    if (!output) return;
+                    output.textContent = 'Generating session notes...';
+                    try {
+                        const response = await fetch('{{ url_for('ai_instructor_virtual_call_summary') }}', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                classroom_id: {{ classroom.id|tojson }},
+                                call_post_id: callId,
+                                host_notes: hostInput ? hostInput.value : '',
+                            })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            output.textContent = data.error || 'Could not generate session notes.';
+                            return;
+                        }
+                        const actions = Array.isArray(data.action_items) ? data.action_items.map(i => `- ${i}`).join('\n') : '';
+                        const follows = Array.isArray(data.followups) ? data.followups.map(i => `- ${i}`).join('\n') : '';
+                        output.textContent = `Summary: ${data.summary || 'N/A'}\n\nAction Items:\n${actions || '- None'}\n\nFollow-ups:\n${follows || '- None'}${data.generated_at ? `\n\nGenerated: ${String(data.generated_at).slice(0,16).replace('T',' ')}` : ''}`;
+                    } catch (err) {
+                        output.textContent = 'Network error while generating session notes.';
+                    }
+                }
+
+                if (instructorAiTask) {
+                    instructorAiTask.addEventListener('change', updateInstructorAiUi);
+                    updateInstructorAiUi();
+                }
+                if (instructorAssignmentId) {
+                    instructorAssignmentId.addEventListener('change', filterSubmissionOptions);
+                    filterSubmissionOptions();
+                }
+                if (instructorAiRun) {
+                    instructorAiRun.addEventListener('click', runInstructorAi);
+                }
+
+                if ({{ instructor_ai_enabled | tojson }}) {
+                    if (premiumBulkAiSection) {
+                        premiumBulkAiSection.style.display = 'block';
+                    }
+                    loadPremiumBulkAiTable();
+                }
+                if (runVirtualCallAnalyticsBtn) {
+                    runVirtualCallAnalyticsBtn.addEventListener('click', runVirtualCallAnalytics);
+                }
+                document.querySelectorAll('.generateSessionNotesBtn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const callId = Number(btn.getAttribute('data-call-id'));
+                        if (!Number.isNaN(callId)) {
+                            generateSessionNotes(callId);
+                        }
+                    });
+                });
+
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(debounce);
+                    const q = this.value.trim();
+                    if (q.length < 2) { resultsBox.style.display='none'; return; }
+                    debounce = setTimeout(() => {
+                        fetch(`/school/${schoolId}/search-enrollees?q=${encodeURIComponent(q)}&university=${isUniversity ? 1 : 0}`)
+                            .then(r => r.json())
+                            .then(data => {
+                                resultsBox.innerHTML = '';
+                                if (!data.length) {
+                                    resultsBox.innerHTML = '<div style="padding:10px 12px;color:#64748b;font-size:0.9rem;">No results</div>';
+                                } else {
+                                    data.forEach(s => {
+                                        const div = document.createElement('div');
+                                        div.style.cssText = 'padding:10px 12px;cursor:pointer;font-size:0.92rem;border-bottom:1px solid #f1f5f9;';
+                                        div.textContent = `${s.name} (${s.type})`;
+                                        div.addEventListener('mouseenter', () => div.style.background='#f0f9ff');
+                                        div.addEventListener('mouseleave', () => div.style.background='');
+                                        div.addEventListener('click', () => {
+                                            searchInput.value = s.name;
+                                            targetId.value    = s.id;
+                                            targetType.value  = s.type;
+                                            addBtn.style.display = 'block';
+                                            resultsBox.style.display = 'none';
+                                        });
+                                        resultsBox.appendChild(div);
+                                    });
+                                }
+                                resultsBox.style.display = 'block';
+                            });
+                    }, 280);
+                });
+
+                document.addEventListener('click', function(e){
+                    if (!resultsBox.contains(e.target) && e.target !== searchInput){
+                        resultsBox.style.display='none';
+                    }
+                });
+            })();
+            </script>
+            {% endif %}
+
+            {% if class_members %}
+                <ul>
+                    {% for member in class_members %}
+                        <li style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>{{ member.name }}</strong>
+                                <span>{{ member.role }}</span>
+                            </div>
+                            {% if member.can_remove and session.get('role') in ['teacher', 'lecturer'] %}
+                                <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display: inline; margin: 0;">
+                                    <input type="hidden" name="action" value="remove_member">
+                                    <input type="hidden" name="member_id" value="{{ member.id }}">
+                                    <button type="submit" style="padding: 5px 10px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;" onclick="return confirm('Remove this member from the classroom?');">Remove</button>
+                                </form>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">No class members yet.</div>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+{% endblock %}

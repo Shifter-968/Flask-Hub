@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ school.name }}</h1>
+<p><strong>Type:</strong> {{ school.get_school_type_display() }}</p>
+<p><strong>Location:</strong> {{ school.location }}</p>
+
+<a href="{{ url_for('edit_school', school_id=school.id) }}" class="btn btn-primary">Edit School</a>
+<a href="{{ url_for('delete_school', school_id=school.id) }}" class="btn btn-danger">Delete School</a>
+{% endblock %}

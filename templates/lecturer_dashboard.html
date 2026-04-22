@@ -1,0 +1,567 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Lecturer Dashboard" %}
+{% set role = "Lecturer" %}
+{% set tabs = ["Announcements", "Events", "Classroom", "Portal", "AI"] %}
+
+{% block content %}
+<style>
+    .dashboard-section {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        transition: transform 0.3s ease;
+    }
+    .dashboard-section:hover {
+        transform: translateY(-5px);
+    }
+    .section-header {
+        font-size: 2em;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    .announcement-item, .event-item {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: box-shadow 0.3s ease;
+    }
+    .announcement-item:hover, .event-item:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .classrooms-shell {
+        width: 100%;
+        margin-top: 22px;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(0,0,0,0.08);
+    }
+    .classrooms-shell h3 {
+        margin: 0 0 12px;
+        text-align: left;
+        color: #1f2937;
+    }
+    .classroom-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+    }
+    .classroom-card {
+        background: rgba(255, 255, 255, 0.86);
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 130px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .classroom-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+    }
+    .classroom-main {
+        text-decoration: none;
+        color: #1f2937;
+        width: 100%;
+        flex: 1;
+        min-width: 0;
+    }
+    .classroom-main strong {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .classroom-meta {
+        color: #6b7280;
+        font-size: 0.85rem;
+        margin-top: 3px;
+    }
+    .classroom-actions {
+        display: flex;
+        gap: 6px;
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: auto;
+    }
+    .classroom-action-btn {
+        border: none;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        color: #fff;
+    }
+    .classroom-action-btn.open { background: #2563eb; }
+    .classroom-action-btn.edit { background: #0ea5e9; }
+    .classroom-action-btn.delete { background: #dc2626; }
+    .no-data {
+        text-align: center;
+        color: #7f8c8d;
+        font-style: italic;
+        padding: 20px;
+    }
+    .crystal-button {
+        background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3));
+        border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 25px;
+        padding: 12px 25px;
+        color: #2c3e50;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-block;
+        margin: 10px 5px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .crystal-button:hover {
+        background: linear-gradient(45deg, rgba(255,255,255,0.2), rgba(255,255,255,0.4));
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+    .relaxed-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        width: 100%;
+    }
+    .ai-shell {
+        border: 1px solid #b7c6ff;
+        border-radius: 16px;
+        background: linear-gradient(140deg, #f8fbff 0%, #eef4ff 55%, #f6faff 100%);
+        padding: 16px;
+        box-shadow: 0 10px 24px rgba(30, 64, 175, 0.12);
+    }
+    .ai-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .ai-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 0.74rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        color: #ffffff;
+        background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb 55%, #1d4ed8);
+        box-shadow: 0 0 0 5px rgba(96, 165, 250, 0.2);
+    }
+    .ai-badge {
+        margin-left: auto;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        border: 1px solid #c7d2fe;
+        color: #3730a3;
+        background: #eef2ff;
+    }
+    .ai-controls {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .ai-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .ai-btn {
+        border: 1px solid #bfdbfe;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #1e3a8a;
+        padding: 7px 11px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .ai-btn.primary {
+        color: #ffffff;
+        border-color: #1d4ed8;
+        background: linear-gradient(90deg, #1d4ed8, #1e40af);
+    }
+    .ai-output {
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        background: #ffffff;
+        min-height: 110px;
+        padding: 12px;
+        color: #1f2a44;
+        white-space: pre-wrap;
+        line-height: 1.55;
+    }
+    .ai-meta {
+        margin-top: 8px;
+        color: #64748b;
+        font-size: 0.82rem;
+    }
+    .calendar-layout {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 14px;
+        padding: 14px;
+    }
+    .mobile-events-list {
+        display: none;
+        margin-top: 10px;
+    }
+    .mobile-event-card {
+        border: 1px solid #e0e7ff;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    @media (max-width: 980px) {
+        .ai-controls {
+            grid-template-columns: 1fr;
+        }
+        .calendar-layout {
+            grid-template-columns: 1fr;
+        }
+        .calendar-grid {
+            display: none !important;
+        }
+        .month-label {
+            display: none;
+        }
+        .mobile-events-list {
+            display: block;
+        }
+    }
+</style>
+
+<div class="relaxed-layout">
+    <section id="announcements" class="dashboard-section">
+        <h2 class="section-header">Announcements</h2>
+        {% if announcements %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+                {% for ann in announcements %}
+                <article style="border: 1px solid #d7def3; border-radius: 10px; overflow: hidden; background: #f9fbff; box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08);">
+                    <header style="display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 10px 12px; background: linear-gradient(90deg, #2350bf, #4b3dd1 60%, #6a48ff); color: #eef2ff; font-weight: 800;">
+                        <span>{{ ann.title }}</span>
+                        <span style="font-size: 0.72rem; font-weight: 700; opacity: 0.9;">{{ ann.created_at[:10] if ann.created_at else 'N/A' }}</span>
+                    </header>
+                    <div style="padding: 12px; color: #334155; font-size: 0.9rem; min-height: 90px;">{{ ann.content }}</div>
+                    <footer style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-top: 1px solid #e6ebfb;">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            {% if (ann.alert_level or 'normal') == 'high' %}
+                                <span style="display: inline-block; border-radius: 999px; padding: 3px 8px; font-size: 0.7rem; font-weight: 800; color: #991b1b; background: #fee2e2; border: 1px solid #fecaca;">HIGH ALERT</span>
+                            {% else %}
+                                <span style="display: inline-block; border-radius: 999px; padding: 3px 8px; font-size: 0.7rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; border: 1px solid #bfdbfe;">NORMAL</span>
+                            {% endif %}
+                            {% if ann.expires_at %}
+                                <span style="display: inline-block; border-radius: 999px; padding: 3px 8px; font-size: 0.7rem; font-weight: 800; color: #166534; background: #dcfce7; border: 1px solid #bbf7d0;">Expires {{ ann.expires_at[:10] }}</span>
+                            {% endif %}
+                        </div>
+                        <a href="#" style="background: #e91e63; color: #fff; text-decoration: none; font-weight: 800; font-size: 0.75rem; border-radius: 999px; padding: 6px 10px;">View Details</a>
+                    </footer>
+                </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-data">No announcements yet. Stay tuned!</div>
+        {% endif %}
+    </section>
+
+    <section id="events" class="dashboard-section">
+        <div style="border: 1px solid #d8def4; border-radius: 14px; overflow: hidden; background: #f7f9ff;">
+            <div style="padding: 14px 18px; background: linear-gradient(90deg, #2f3ca8, #4f4bda 55%, #5f77ff); color: #eef2ff; font-size: 1.2rem; font-weight: 900; text-align: center; letter-spacing: 0.02em;">School Calendar</div>
+            <div class="calendar-layout">
+                <aside style="background: #ffffff; border: 1px solid #dbe2f5; border-radius: 10px; padding: 12px;">
+                    <h4 style="margin: 0 0 10px; color: #2d3a72; font-size: 1rem;">Upcoming Events</h4>
+                    <div id="upcomingEvents"></div>
+                </aside>
+                <div>
+                    <div id="monthLabel" class="month-label" style="font-size: 0.9rem; font-weight: 800; color: #2d3a72; margin-bottom: 8px;"></div>
+                    <div id="calendarGrid" class="calendar-grid" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid #dbe2f5; border-radius: 10px; overflow: hidden; background: #fff;"></div>
+                    <div id="mobileEventsList" class="mobile-events-list"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+    (() => {
+        const rawEvents = {{ events|tojson }};
+        const palette = ["#e74c3c", "#f39c12", "#10b981", "#6366f1", "#ec4899", "#0ea5e9"];
+        function toDate(value) {
+            if (!value) return null;
+            const d = new Date(String(value));
+            return Number.isNaN(d.getTime()) ? null : d;
+        }
+        const normalized = (rawEvents || []).map((ev, index) => {
+            const dateText = ev.event_date || ev.date || ev.eventDate || null;
+            return {
+                title: ev.title || "Event",
+                dateText,
+                date: toDate(dateText),
+                color: palette[index % palette.length]
+            };
+        }).filter(ev => ev.date);
+        const upcomingEl = document.getElementById("upcomingEvents");
+        const gridEl = document.getElementById("calendarGrid");
+        const labelEl = document.getElementById("monthLabel");
+        const mobileListEl = document.getElementById("mobileEventsList");
+        if (!upcomingEl || !gridEl || !labelEl) return;
+        const now = new Date();
+        let viewYear = now.getFullYear();
+        let viewMonth = now.getMonth();
+        if (normalized.length) {
+            normalized.sort((a, b) => a.date - b.date);
+            const first = normalized.find(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), 1)) || normalized[0];
+            viewYear = first.date.getFullYear();
+            viewMonth = first.date.getMonth();
+        }
+        const upcoming = normalized
+            .filter(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+            .slice(0, 5);
+        if (upcoming.length) {
+            upcomingEl.innerHTML = upcoming.map(ev => `
+                <article style="border-top: 1px solid #ecf0fb; padding: 8px 0;">
+                    <div style="font-weight: 800; color: #334155; font-size: 0.88rem;">${ev.title}</div>
+                    <div style="font-size: 0.78rem; color: #64748b;">${ev.date.toLocaleDateString()}</div>
+                </article>
+            `).join("");
+        } else {
+            upcomingEl.innerHTML = '<div style="font-size: 0.78rem; color: #64748b;">No upcoming events yet.</div>';
+        }
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        function sameDay(a, b) {
+            return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+        }
+        function renderCalendar(year, month) {
+            labelEl.textContent = `${monthNames[month]} ${year}`;
+            const firstDay = new Date(year, month, 1);
+            const startWeekday = firstDay.getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let html = dayNames.map(d => `<div style="border-right: 1px solid #edf2ff; border-bottom: 1px solid #edf2ff; min-height: 36px; padding: 6px; background: #f3f6ff; color: #334155; font-size: 0.78rem; font-weight: 800; text-align: center;">${d}</div>`).join("");
+            for (let i = 0; i < startWeekday; i += 1) {
+                html += '<div style="border-right: 1px solid #edf2ff; border-bottom: 1px solid #edf2ff; min-height: 50px; padding: 6px;"></div>';
+            }
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const cellDate = new Date(year, month, day);
+                const todaysEvents = normalized.filter(ev => sameDay(ev.date, cellDate));
+                const chips = todaysEvents.slice(0, 2).map(ev => `<div style="margin-top: 4px; font-size: 0.68rem; color: #fff; font-weight: 800; border-radius: 6px; padding: 3px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background:${ev.color}">${ev.title}</div>`).join("");
+                html += `<div style="border-right: 1px solid #edf2ff; border-bottom: 1px solid #edf2ff; min-height: 50px; padding: 6px;"><div style="font-size: 0.8rem; font-weight: 700; color: #475569;">${day}</div>${chips}</div>`;
+            }
+            gridEl.innerHTML = html;
+        }
+        renderCalendar(viewYear, viewMonth);
+        if (mobileListEl) {
+            const mobileEvents = normalized
+                .slice()
+                .sort((a, b) => a.date - b.date)
+                .filter(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+                .slice(0, 8);
+            if (mobileEvents.length) {
+                mobileListEl.innerHTML = mobileEvents.map(ev => `
+                    <article class="mobile-event-card">
+                        <div style="font-weight: 800; color: #1f2a52;">${ev.title}</div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">${ev.date.toLocaleDateString()}</div>
+                    </article>
+                `).join("");
+            } else {
+                mobileListEl.innerHTML = '<div style="font-size: 0.82rem; color: #64748b;">No upcoming events yet.</div>';
+            }
+        }
+    })();
+    </script>
+
+    <section id="classrooms" class="dashboard-section">
+        {% if edit_classroom %}
+            <h2 class="section-header">✏️ Edit Classroom</h2>
+            <form method="post" action="{{ url_for('update_classroom', classroom_id=edit_classroom.id) }}">
+                <div class="form-group">
+                    <label for="name">Classroom Name:</label>
+                    <input type="text" id="name" name="name" value="{{ edit_classroom.name }}" required>
+                </div>
+                <button type="submit" class="crystal-button">Update Classroom</button>
+                <a href="{{ url_for('lecturer_dashboard', school_id=session['school_id']) }}" class="crystal-button">Cancel</a>
+            </form>
+        {% else %}
+            <h2 class="section-header">🏫 Create Classroom</h2>
+            <form method="post" action="{{ url_for('create_classroom') }}">
+                <div class="form-group">
+                    <label for="name">Classroom Name:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="code">Class Code (optional):</label>
+                    <input type="text" id="code" name="code" placeholder="Auto-generated if blank">
+                </div>
+                <button type="submit" class="crystal-button">Create Classroom</button>
+            </form>
+        {% endif %}
+
+        <div class="classrooms-shell">
+            <h3>My Classrooms</h3>
+            <div class="classroom-grid">
+                {% for c in classrooms %}
+                <article class="classroom-card">
+                    <a class="classroom-main" href="{{ url_for('classroom_detail', classroom_id=c.id) }}">
+                        <strong>{{ c.name }}</strong>
+                        <div class="classroom-meta">Code: <strong>{{ c.class_code or c.code or 'N/A' }}</strong> <span style="font-size:0.78rem;color:#64748b;">(share with students to join)</span></div>
+                    </a>
+                    <div class="classroom-actions">
+                        <a href="{{ url_for('classroom_detail', classroom_id=c.id) }}" class="classroom-action-btn open">Open</a>
+                        <a href="{{ url_for('update_classroom', classroom_id=c.id) }}" class="classroom-action-btn edit">Edit</a>
+                        <form method="post" action="{{ url_for('delete_classroom', classroom_id=c.id) }}" style="display:inline;">
+                            <button type="submit" class="classroom-action-btn delete">Delete</button>
+                        </form>
+                </div>
+                </article>
+                {% else %}
+                <div class="no-data">No classrooms found.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="portal" class="dashboard-section">
+        <h2 class="section-header">� Performance Portal</h2>
+        <p style="text-align:center;color:#64748b;margin-bottom:28px;">Track student performance by assignment and generate end-of-semester report cards.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <a href="{{ url_for('portal_assignments', school_id=school_id) }}" style="display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#eff6ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:16px;padding:26px;text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 30px rgba(99,102,241,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size:2.2rem;">📝</div>
+                <div style="font-size:1.15rem;font-weight:700;color:#1e293b;">Assignment Performance</div>
+                <div style="font-size:0.88rem;color:#64748b;line-height:1.55;">Record classwork, tests, quizzes and exams per student. View full grade tables with averages and GPA.</div>
+                <div style="margin-top:auto;font-size:0.88rem;font-weight:600;color:#4f46e5;">Open → </div>
+            </a>
+            <a href="{{ url_for('portal_term_results', school_id=school_id) }}" style="display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:16px;padding:26px;text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 30px rgba(16,185,129,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size:2.2rem;">🏆</div>
+                <div style="font-size:1.15rem;font-weight:700;color:#1e293b;">Semester End Results</div>
+                <div style="font-size:0.88rem;color:#64748b;line-height:1.55;">Generate digital semester report cards. Enter overall marks, auto-generate symbols and calculate CGPA per student.</div>
+                <div style="margin-top:auto;font-size:0.88rem;font-weight:600;color:#059669;">Open → </div>
+            </a>
+        </div>
+    </section>
+
+    <section id="ai-panel" class="dashboard-section">
+        <h2 class="section-header">Instructor AI Dashboard Copilot</h2>
+        <div class="ai-shell">
+            <div class="ai-head">
+                <div class="ai-icon">AI</div>
+                <strong style="color:#1e3a8a;">Ask before opening every page</strong>
+                <span class="ai-badge">{% if instructor_ai_enabled %}Premium Ready{% else %}Premium Locked{% endif %}</span>
+            </div>
+            <div class="ai-controls">
+                <textarea id="instructorDashAiInput" placeholder="Ask about school totals, latest assignments, planning, and class status..." style="min-height:86px;border:1px solid #cbd5e1;border-radius:12px;padding:11px;resize:vertical;"></textarea>
+                <select id="instructorDashAiClassroom" style="height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:10px;">
+                    <option value="all">All my classrooms</option>
+                    {% for c in classrooms %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ai-actions">
+                <button class="ai-btn primary" id="instructorDashAiAsk">Ask AI</button>
+                <button class="ai-btn" data-ai-prompt="How many classes have been created in our school so far?">School class totals</button>
+                <button class="ai-btn" data-ai-prompt="What is the latest assignment in my selected classroom about?">Latest assignment summary</button>
+                <button class="ai-btn" data-ai-prompt="How many students submitted out of how many in this class?">Submission coverage (Premium)</button>
+            </div>
+            <div id="instructorDashAiOutput" class="ai-output">Instructor AI is ready. Ask a question to get school and classroom intelligence.</div>
+            <div id="instructorDashAiMeta" class="ai-meta">Premium-only prompts include submission coverage and advanced integrity analytics.</div>
+        </div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const input = document.getElementById("instructorDashAiInput");
+    const output = document.getElementById("instructorDashAiOutput");
+    const meta = document.getElementById("instructorDashAiMeta");
+    const classroom = document.getElementById("instructorDashAiClassroom");
+    const askBtn = document.getElementById("instructorDashAiAsk");
+    const quick = document.querySelectorAll(".ai-btn[data-ai-prompt]");
+    if (!input || !output || !classroom || !askBtn) return;
+
+    async function askInstructorDashboardAi(seedPrompt) {
+        const typed = (input.value || "").trim();
+        const message = typed || (seedPrompt || "");
+        if (!message) {
+            output.textContent = "Type a question first.";
+            return;
+        }
+        output.textContent = "Thinking...";
+        if (meta) {
+            meta.textContent = "Collecting school and classroom context...";
+        }
+        try {
+            const selected = classroom.value === "all" ? null : Number(classroom.value);
+            const response = await fetch("{{ url_for('ai_instructor_dashboard_bot') }}", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    message,
+                    classroom_id: selected,
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                output.textContent = data.error || "Instructor dashboard AI request failed.";
+                return;
+            }
+            output.textContent = data.reply || "No response returned.";
+            if (meta) {
+                const counts = data.used_context || {};
+                meta.textContent = `Context used: ${counts.school_classrooms || 0} school classrooms, ${counts.owned_classrooms || 0} your classrooms, ${counts.assignments || 0} assignments, ${counts.submissions || 0} submissions.`;
+            }
+        } catch (error) {
+            output.textContent = "Network error while contacting Instructor AI.";
+        }
+    }
+
+    askBtn.addEventListener("click", () => askInstructorDashboardAi(""));
+    quick.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            askInstructorDashboardAi(btn.getAttribute("data-ai-prompt") || "");
+        });
+    });
+})();
+</script>
+{% endblock %}

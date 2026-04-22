@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Home - Smart School Hub{% endblock %}
+{% block content %}
+<style>
+    .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 28px;
+        align-items: center;
+    }
+    .hero h1 {
+        margin-bottom: 14px;
+    }
+    .hero p {
+        color: #475569;
+        font-size: 1.04rem;
+        line-height: 1.72;
+    }
+    .hero-actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    .stat-card {
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        background: rgba(255, 255, 255, 0.88);
+    }
+    .stat-value {
+        font-size: 1.48rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .stat-label {
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.86rem;
+    }
+    .feature-row {
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    .feature-card {
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: rgba(248, 250, 252, 0.9);
+        padding: 14px;
+        font-size: 0.92rem;
+        color: #334155;
+        min-height: 108px;
+    }
+    .feature-card strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #0f172a;
+    }
+    @media (max-width: 900px) {
+        .hero { grid-template-columns: 1fr; }
+        .feature-row { grid-template-columns: 1fr; }
+    }
+</style>
+
+<section class="hero">
+    <div>
+        <h1>Welcome to Smart School Hub</h1>
+        <p class="lead">Your all-in-one digital campus for school operations, classroom collaboration, and performance reporting.</p>
+        <p>
+            Smart School Hub connects administrators, teachers, lecturers, learners, parents, and students in one clean workflow.
+            From announcements to assignments and term reports, everything runs in a single professional platform.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('services') }}" class="btn btn-primary btn-lg">Explore Services</a>
+            <a href="{{ url_for('schools_directory') }}" class="btn btn-outline-dark btn-lg">Browse Schools</a>
+        </div>
+    </div>
+    <div class="hero-stats">
+        <div class="stat-card">
+            <div class="stat-value">24/7</div>
+            <div class="stat-label">Portal Availability</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">6 Roles</div>
+            <div class="stat-label">Connected User Types</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">Real-time</div>
+            <div class="stat-label">Academic Tracking</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">Secure</div>
+            <div class="stat-label">School Data Workflows</div>
+        </div>
+    </div>
+</section>
+
+<section class="feature-row">
+    <article class="feature-card">
+        <strong>Classroom Workspaces</strong>
+        Create digital class hubs for assignments, materials and submissions.
+    </article>
+    <article class="feature-card">
+        <strong>Performance Portals</strong>
+        Capture assignment marks and produce end-term report insights.
+    </article>
+    <article class="feature-card">
+        <strong>School-wide Communication</strong>
+        Publish announcements and events to keep communities informed.
+    </article>
+</section>
+{% endblock %}

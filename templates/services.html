@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Services - Smart School Hub{% endblock %}
+{% block content %}
+<style>
+  .services-head p {
+    color: #475569;
+    max-width: 760px;
+    line-height: 1.7;
+  }
+  .service-grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .service-card {
+    border-radius: 15px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(255, 255, 255, 0.88);
+    padding: 16px;
+    min-height: 148px;
+  }
+  .service-card h5 {
+    margin-bottom: 7px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .service-card p {
+    margin: 0;
+    color: #475569;
+    font-size: 0.93rem;
+    line-height: 1.6;
+  }
+  @media (max-width: 900px) {
+    .service-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .service-grid { gap: 12px; }
+    .service-card { padding: 14px; min-height: auto; }
+    .service-card h5 { font-size: 1rem; }
+    .service-card p { font-size: 0.9rem; line-height: 1.55; }
+  }
+</style>
+
+<div class="services-head">
+  <h1>Our Services</h1>
+  <p class="lead">
+    Smart School Hub provides integrated tools for modern education workflows, from administration to classroom delivery and performance reporting.
+  </p>
+</div>
+
+<section class="service-grid">
+  <article class="service-card">
+    <h5>📊 Student Information Management</h5>
+    <p>Maintain structured records for learners, students, teachers, lecturers, staff, and parents in one central platform.</p>
+  </article>
+  <article class="service-card">
+    <h5>📅 Event Scheduling & Notifications</h5>
+    <p>Publish school events and announcements so the entire community receives updates quickly and clearly.</p>
+  </article>
+  <article class="service-card">
+    <h5>📝 Assignment Tracking</h5>
+    <p>Track assignments by classroom, capture submissions, and monitor completion progress across students.</p>
+  </article>
+  <article class="service-card">
+    <h5>📈 Performance Analytics</h5>
+    <p>Capture marks, auto-calculate percentages, generate symbols, and review term or semester outcomes.</p>
+  </article>
+  <article class="service-card">
+    <h5>👩‍🏫 Classroom Collaboration</h5>
+    <p>Support teacher and lecturer workflows with stream updates, resources, and role-based class management.</p>
+  </article>
+  <article class="service-card">
+    <h5>🔒 School-ready Access Control</h5>
+    <p>Use role-based access to separate administrative, academic, and learner experiences securely.</p>
+  </article>
+</section>
+{% endblock %}

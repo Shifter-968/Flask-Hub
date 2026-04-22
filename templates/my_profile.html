@@ -1,0 +1,404 @@
+{% extends "base_dashboard.html" %}
+{% set title = "My Profile" %}
+{% set role = "Profile" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0 auto 20px;
+        border: 4px solid rgba(255,255,255,0.3);
+    }
+    .profile-name {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .profile-role {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        background: rgba(255,255,255,0.2);
+        padding: 8px 16px;
+        border-radius: 20px;
+        display: inline-block;
+    }
+    .profile-section {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .profile-section h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: #1f2937;
+        font-size: 1.4rem;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .info-value {
+        font-size: 1rem;
+        color: #1f2937;
+        font-weight: 500;
+    }
+    .session-info {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    .session-info h4 {
+        margin-top: 0;
+        color: #374151;
+        font-size: 1.1rem;
+    }
+    .session-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+    .session-item {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+    }
+    .session-label {
+        font-weight: bold;
+        color: #6b7280;
+    }
+    .session-value {
+        color: #1f2937;
+        word-break: break-all;
+    }
+</style>
+
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            {{ (profile_data.name or user_info.username or "U")[0].upper() }}
+        </div>
+        <h1 class="profile-name">{{ profile_data.name or user_info.username or "User" }}</h1>
+        <div class="profile-role">{{ profile_data.role_display or (profile_role|title if profile_role else "User") }}</div>
+    </div>
+
+    <div class="profile-section">
+        <h3>Account Information</h3>
+        <div class="info-grid">
+            {% if profile_data.name %}
+            <div class="info-item">
+                <div class="info-label">Full Name</div>
+                <div class="info-value">{{ profile_data.name }}</div>
+            </div>
+            {% endif %}
+
+            {% if user_info.username %}
+            <div class="info-item">
+                <div class="info-label">Username</div>
+                <div class="info-value">{{ user_info.username }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.email or user_info.email %}
+            <div class="info-item">
+                <div class="info-label">Email</div>
+                <div class="info-value">{{ profile_data.email or user_info.email }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.role_display or user_info.role %}
+            <div class="info-item">
+                <div class="info-label">Role</div>
+                <div class="info-value">{{ profile_data.role_display or (user_info.role|title) }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.school_name %}
+            <div class="info-item">
+                <div class="info-label">School</div>
+                <div class="info-value">{{ profile_data.school_name }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.school_id %}
+            <div class="info-item">
+                <div class="info-label">School ID</div>
+                <div class="info-value">{{ profile_data.school_id }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if profile_role == 'student' %}
+    <div class="profile-section">
+        <h3>Student Academic Profile</h3>
+        <div class="info-grid">
+            {% if profile_data.course_id %}
+            <div class="info-item">
+                <div class="info-label">Course</div>
+                <div class="info-value">
+                    {% if profile_data.course_name %}
+                        {{ profile_data.course_name }} (ID: {{ profile_data.course_id }})
+                    {% else %}
+                        {{ profile_data.course_id }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.year_of_study %}
+            <div class="info-item">
+                <div class="info-label">Year of Study</div>
+                <div class="info-value">{{ profile_data.year_of_study }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.semester %}
+            <div class="info-item">
+                <div class="info-label">Semester</div>
+                <div class="info-value">{{ profile_data.semester }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.year_of_enrollment %}
+            <div class="info-item">
+                <div class="info-label">Year of Enrollment</div>
+                <div class="info-value">{{ profile_data.year_of_enrollment }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.course_duration %}
+            <div class="info-item">
+                <div class="info-label">Course Duration</div>
+                <div class="info-value">{{ profile_data.course_duration }} years</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.phone_number %}
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ profile_data.phone_number }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.current_residential_address %}
+            <div class="info-item">
+                <div class="info-label">Address</div>
+                <div class="info-value">{{ profile_data.current_residential_address }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif profile_role == 'learner' %}
+    <div class="profile-section">
+        <h3>Learner Profile</h3>
+        <div class="info-grid">
+            {% if profile_data.grade %}
+            <div class="info-item">
+                <div class="info-label">Grade</div>
+                <div class="info-value">{{ profile_data.grade }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.year_of_study %}
+            <div class="info-item">
+                <div class="info-label">Year of Study</div>
+                <div class="info-value">{{ profile_data.year_of_study }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.phone_number %}
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ profile_data.phone_number }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.current_residential_address %}
+            <div class="info-item">
+                <div class="info-label">Address</div>
+                <div class="info-value">{{ profile_data.current_residential_address }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif profile_role == 'teacher' %}
+    <div class="profile-section">
+        <h3>Teacher Professional Profile</h3>
+        <div class="info-grid">
+            {% if profile_data.core_subjects %}
+            <div class="info-item">
+                <div class="info-label">Core Subjects</div>
+                <div class="info-value">{{ profile_data.core_subjects }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.phone_number %}
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ profile_data.phone_number }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.id %}
+            <div class="info-item">
+                <div class="info-label">Teacher Record ID</div>
+                <div class="info-value">{{ profile_data.id }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif profile_role == 'lecturer' %}
+    <div class="profile-section">
+        <h3>Lecturer Professional Profile</h3>
+        <div class="info-grid">
+            {% if profile_data.faculty %}
+            <div class="info-item">
+                <div class="info-label">Faculty</div>
+                <div class="info-value">{{ profile_data.faculty }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.phone_number %}
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ profile_data.phone_number }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.id %}
+            <div class="info-item">
+                <div class="info-label">Lecturer Record ID</div>
+                <div class="info-value">{{ profile_data.id }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif profile_role == 'parent' %}
+    <div class="profile-section">
+        <h3>Parent Profile</h3>
+        <div class="info-grid">
+            {% if profile_data.subscription_status %}
+            <div class="info-item">
+                <div class="info-label">Subscription Status</div>
+                <div class="info-value">{{ profile_data.subscription_status|title }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.id %}
+            <div class="info-item">
+                <div class="info-label">Parent Record ID</div>
+                <div class="info-value">{{ profile_data.id }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif profile_role == 'staff' %}
+    <div class="profile-section">
+        <h3>Staff Profile</h3>
+        <div class="info-grid">
+            {% if profile_data.department %}
+            <div class="info-item">
+                <div class="info-label">Department</div>
+                <div class="info-value">{{ profile_data.department }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.phone_number %}
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ profile_data.phone_number }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.id %}
+            <div class="info-item">
+                <div class="info-label">Staff Record ID</div>
+                <div class="info-value">{{ profile_data.id }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="profile-section">
+        <h3>Profile Details</h3>
+        <div class="info-grid">
+            {% if profile_data.phone_number %}
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ profile_data.phone_number }}</div>
+            </div>
+            {% endif %}
+
+            {% if profile_data.current_residential_address %}
+            <div class="info-item">
+                <div class="info-label">Address</div>
+                <div class="info-value">{{ profile_data.current_residential_address }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="profile-section">
+        <h3>Session Information</h3>
+        <p style="color: #6b7280; margin-bottom: 20px;">This information is useful for debugging session issues during development.</p>
+
+        <div class="session-info">
+            <h4>Current Session Data</h4>
+            <div class="session-grid">
+                {% for key, value in session.items() %}
+                <div class="session-item">
+                    <div class="session-label">{{ key }}:</div>
+                    <div class="session-value">{{ value }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

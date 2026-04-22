@@ -1,0 +1,338 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Parent Dashboard" %}
+{% set role = "Parent" %}
+{% set tabs = ["Announcements", "Events", "Portal"] %}
+
+{% block content %}
+<style>
+    .dashboard-section {
+        background: #ffffff;
+        border: 1px solid #d9e0f2;
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 24px;
+        box-shadow: 0 12px 30px rgba(30, 41, 59, 0.10);
+    }
+    .section-header {
+        margin: 0 0 14px;
+        font-size: 1.28rem;
+        font-weight: 900;
+        color: #27325f;
+        letter-spacing: 0.02em;
+    }
+
+    .announce-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 12px;
+    }
+    .announce-card {
+        border: 1px solid #d7def3;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #f9fbff;
+        box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08);
+    }
+    .announce-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 12px;
+        background: linear-gradient(90deg, #2350bf, #4b3dd1 60%, #6a48ff);
+        color: #eef2ff;
+        font-weight: 800;
+    }
+    .announce-date {
+        font-size: 0.72rem;
+        font-weight: 700;
+        opacity: 0.9;
+    }
+    .announce-body {
+        padding: 12px;
+        color: #334155;
+        font-size: 0.9rem;
+        min-height: 90px;
+    }
+    .announce-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-top: 1px solid #e6ebfb;
+    }
+    .pill {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 0.7rem;
+        font-weight: 800;
+    }
+    .pill-high { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; }
+    .pill-normal { color: #1d4ed8; background: #dbeafe; border: 1px solid #bfdbfe; }
+    .pill-expiry { color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; }
+    .announce-btn {
+        background: #e91e63;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 0.75rem;
+        border-radius: 999px;
+        padding: 6px 10px;
+    }
+
+    .calendar-shell {
+        border: 1px solid #d8def4;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #f7f9ff;
+    }
+    .calendar-head {
+        padding: 14px 18px;
+        background: linear-gradient(90deg, #2f3ca8, #4f4bda 55%, #5f77ff);
+        color: #eef2ff;
+        font-size: 1.2rem;
+        font-weight: 900;
+        text-align: center;
+        letter-spacing: 0.02em;
+    }
+    .calendar-body {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 14px;
+        padding: 14px;
+    }
+    .upcoming-box {
+        background: #ffffff;
+        border: 1px solid #dbe2f5;
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .upcoming-box h4 { margin: 0 0 10px; color: #2d3a72; font-size: 1rem; }
+    .upcoming-item { border-top: 1px solid #ecf0fb; padding: 8px 0; }
+    .upcoming-item:first-of-type { border-top: none; }
+    .upcoming-title { font-weight: 800; color: #334155; font-size: 0.88rem; }
+    .upcoming-date { font-size: 0.78rem; color: #64748b; }
+
+    .month-label {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #2d3a72;
+        margin-bottom: 8px;
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        border: 1px solid #dbe2f5;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #fff;
+    }
+    .day-name, .day-cell {
+        border-right: 1px solid #edf2ff;
+        border-bottom: 1px solid #edf2ff;
+        min-height: 50px;
+        padding: 6px;
+    }
+    .day-name {
+        min-height: 36px;
+        background: #f3f6ff;
+        color: #334155;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-align: center;
+    }
+    .day-cell:nth-child(7n), .day-name:nth-child(7n) { border-right: none; }
+    .day-num { font-size: 0.8rem; font-weight: 700; color: #475569; }
+    .event-chip {
+        margin-top: 4px;
+        font-size: 0.68rem;
+        color: #fff;
+        font-weight: 800;
+        border-radius: 6px;
+        padding: 3px 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .no-data {
+        text-align: center;
+        color: #7f8c8d;
+        font-style: italic;
+        padding: 20px;
+    }
+    .crystal-button {
+        background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3));
+        border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 25px;
+        padding: 12px 25px;
+        color: #2c3e50;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-block;
+        margin: 10px 5px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .crystal-button:hover {
+        background: linear-gradient(45deg, rgba(255,255,255,0.2), rgba(255,255,255,0.4));
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .relaxed-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 100%;
+    }
+    @media (max-width: 980px) {
+        .calendar-body { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="relaxed-layout">
+    <section id="announcements" class="dashboard-section">
+        <h2 class="section-header">Announcements</h2>
+        {% if announcements %}
+            <div class="announce-grid">
+                {% for ann in announcements %}
+                <article class="announce-card">
+                    <header class="announce-head">
+                        <span>{{ ann.title }}</span>
+                        <span class="announce-date">{{ ann.created_at[:10] if ann.created_at else 'N/A' }}</span>
+                    </header>
+                    <div class="announce-body">{{ ann.content }}</div>
+                    <footer class="announce-footer">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            {% if (ann.alert_level or 'normal') == 'high' %}
+                                <span class="pill pill-high">HIGH ALERT</span>
+                            {% else %}
+                                <span class="pill pill-normal">NORMAL</span>
+                            {% endif %}
+                            {% if ann.expires_at %}
+                                <span class="pill pill-expiry">Expires {{ ann.expires_at[:10] }}</span>
+                            {% endif %}
+                        </div>
+                        <a href="#" class="announce-btn">View Details</a>
+                    </footer>
+                </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-data">No announcements yet. Stay tuned!</div>
+        {% endif %}
+    </section>
+
+    <section id="events" class="dashboard-section">
+        <div class="calendar-shell">
+            <div class="calendar-head">School Calendar</div>
+            <div class="calendar-body">
+                <aside class="upcoming-box">
+                    <h4>Upcoming Events</h4>
+                    <div id="upcomingEvents"></div>
+                </aside>
+                <div>
+                    <div id="monthLabel" class="month-label"></div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="portal" class="dashboard-section">
+        <h2 class="section-header">Portal</h2>
+        <p style="text-align: center;">Parent portal links and resources will appear here.</p>
+        <div style="text-align: center;">
+            <a href="#" class="crystal-button">Access Resources</a>
+            <a href="#" class="crystal-button">Contact Teachers</a>
+        </div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const rawEvents = {{ events|tojson }};
+    const palette = ["#e74c3c", "#f39c12", "#10b981", "#6366f1", "#ec4899", "#0ea5e9"];
+
+    function toDate(value) {
+        if (!value) return null;
+        const d = new Date(String(value));
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const normalized = (rawEvents || []).map((ev, index) => {
+        const dateText = ev.event_date || ev.date || ev.eventDate || null;
+        return {
+            title: ev.title || "Event",
+            dateText,
+            date: toDate(dateText),
+            color: palette[index % palette.length]
+        };
+    }).filter(ev => ev.date);
+
+    const upcomingEl = document.getElementById("upcomingEvents");
+    const gridEl = document.getElementById("calendarGrid");
+    const labelEl = document.getElementById("monthLabel");
+
+    if (!upcomingEl || !gridEl || !labelEl) return;
+
+    const now = new Date();
+    let viewYear = now.getFullYear();
+    let viewMonth = now.getMonth();
+    if (normalized.length) {
+        normalized.sort((a, b) => a.date - b.date);
+        const first = normalized.find(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), 1)) || normalized[0];
+        viewYear = first.date.getFullYear();
+        viewMonth = first.date.getMonth();
+    }
+
+    const upcoming = normalized
+        .filter(ev => ev.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+        .slice(0, 5);
+    if (upcoming.length) {
+        upcomingEl.innerHTML = upcoming.map(ev => `
+            <article class="upcoming-item">
+                <div class="upcoming-title">${ev.title}</div>
+                <div class="upcoming-date">${ev.date.toLocaleDateString()}</div>
+            </article>
+        `).join("");
+    } else {
+        upcomingEl.innerHTML = '<div class="upcoming-date">No upcoming events yet.</div>';
+    }
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function sameDay(a, b) {
+        return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    }
+
+    function renderCalendar(year, month) {
+        labelEl.textContent = `${monthNames[month]} ${year}`;
+
+        const firstDay = new Date(year, month, 1);
+        const startWeekday = firstDay.getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = dayNames.map(d => `<div class="day-name">${d}</div>`).join("");
+        for (let i = 0; i < startWeekday; i += 1) {
+            html += '<div class="day-cell"></div>';
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+            const cellDate = new Date(year, month, day);
+            const todaysEvents = normalized.filter(ev => sameDay(ev.date, cellDate));
+            const chips = todaysEvents.slice(0, 2).map(ev => `<div class="event-chip" style="background:${ev.color}">${ev.title}</div>`).join("");
+            html += `<div class="day-cell"><div class="day-num">${day}</div>${chips}</div>`;
+        }
+
+        gridEl.innerHTML = html;
+    }
+
+    renderCalendar(viewYear, viewMonth);
+})();
+</script>
+{% endblock %}

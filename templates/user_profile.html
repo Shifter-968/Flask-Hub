@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Edit User Profile</h1>
+<form method="POST">
+  <div class="mb-3">
+    <label>Username</label>
+    <input type="text" name="username" value="{{ user.username }}" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label>Email</label>
+    <input type="email" name="email" value="{{ user.email }}" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label>Role</label>
+    <input type="text" name="role" value="{{ user.role }}" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label>New Password (optional)</label>
+    <input type="password" name="password" class="form-control">
+  </div>
+  <button type="submit" class="btn btn-success">Save Changes</button>
+  <a href="{{ url_for('delete_user', user_id=user.id) }}" class="btn btn-danger">Delete User</a>
+</form>
+{% endblock %}

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Admin | {{ school.name }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+  <style>
+    :root {
+      --bg: #0d1122; --bg2: #141b34;
+      --panel: rgba(15,23,42,0.82); --line: rgba(255,255,255,0.18);
+      --text: #eef2ff; --muted: #b6c2dd;
+      --accent: #67e8c7; --accent2: #89b4ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Space Grotesk","Segoe UI",sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 420px at 5% 0%,rgba(103,232,199,.14),transparent 60%),
+        radial-gradient(1000px 520px at 100% 100%,rgba(137,180,255,.2),transparent 55%),
+        linear-gradient(155deg,var(--bg),var(--bg2));
+      padding: clamp(14px,2vw,28px);
+    }
+    .wrap { width: min(1100px,100%); margin: 0 auto; display: grid; gap: 16px; }
+    .hero {
+      border: 1px solid var(--line); border-radius: 22px;
+      background: var(--panel); padding: clamp(16px,2.4vw,28px);
+      box-shadow: 0 28px 56px rgba(2,8,18,.5);
+    }
+    .kicker { margin:0; color:#9ee7d1; text-transform:uppercase; letter-spacing:.08em; font-size:.78rem; }
+    h1 { margin:8px 0 0; font-size:clamp(1.7rem,4vw,2.8rem); }
+    .sub { margin:10px 0 0; color:var(--muted); line-height:1.7; max-width:70ch; }
+    .actions { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; }
+    .btn {
+      text-decoration:none; border-radius:12px; padding:10px 18px;
+      font-weight:700; border:1px solid var(--line); color:var(--text);
+      background:rgba(255,255,255,.05); cursor:pointer; font-size:.92rem;
+    }
+    .btn:hover { background:rgba(255,255,255,.12); }
+    .btn-primary { color:#07202b; border:0; background:linear-gradient(130deg,var(--accent),var(--accent2)); }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+    .stat-card {
+      border:1px solid var(--line); border-radius:16px;
+      background:rgba(255,255,255,.05); padding:18px 16px; text-align:center;
+    }
+    .stat-card .num { font-size:2.4rem; font-weight:800; color:var(--accent); }
+    .stat-card .label { font-size:.85rem; color:var(--muted); margin-top:4px; }
+    .module-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+    .module-card {
+      border:1px solid var(--line); border-radius:18px;
+      background:rgba(255,255,255,.05); padding:20px;
+      text-decoration:none; color:var(--text);
+      transition:background .2s,transform .2s;
+    }
+    .module-card:hover { background:rgba(255,255,255,.1); transform:translateY(-3px); }
+    .module-card .mc-icon { font-size:1.2rem; margin-bottom:10px; font-weight:700; }
+    .module-card h3 { margin:0 0 6px; font-size:1.05rem; }
+    .module-card p { margin:0; font-size:.88rem; color:var(--muted); line-height:1.55; }
+    .section-label { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <p class="kicker">School Admin Console</p>
+    <h1>{{ school.name }}</h1>
+    <p class="sub">Manage enrolment, staff, classrooms, and school content from one place.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="{{ url_for('admin_manage_students', school_id=school.id) }}">{{ 'Manage Students' if is_tertiary else 'Manage Learners' }}</a>
+      <a class="btn" href="{{ url_for('admin_manage_classrooms', school_id=school.id) }}">Classrooms</a>
+      <a class="btn" href="{{ url_for('admin_manage_staff', school_id=school.id) }}">Staff</a>
+      <a class="btn" href="{{ url_for('admin_applications', school_id=school.id) }}">Applications</a>
+      <a class="btn" href="{{ url_for('school_admin_contact_messages', school_id=school.id) }}">Contact Messages</a>
+      {% if not is_tertiary %}
+      <a class="btn" href="{{ url_for('admin_manage_subjects', school_id=school.id) }}">Subjects</a>
+      {% endif %}
+      {% if is_tertiary %}
+      <a class="btn" href="{{ url_for('school_admin_courses', school_id=school.id) }}">Courses</a>
+      <a class="btn" href="{{ url_for('school_admin_modules', school_id=school.id) }}">Modules</a>
+      <a class="btn" href="{{ url_for('school_admin_curriculum', school_id=school.id) }}">Mappings</a>
+      {% endif %}
+      <a class="btn" href="{{ url_for('admin_manage_announcements', school_id=school.id) }}">Announcements</a>
+      <a class="btn" href="{{ url_for('admin_manage_events', school_id=school.id) }}">Events</a>
+      <a class="btn" href="{{ url_for('school_page', school_id=school.id, page_slug='home') }}">School Site</a>
+      <a class="btn" href="{{ url_for('user_profile') }}">My Profile</a>
+      <a class="btn" href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </section>
+
+  <div class="stat-grid">
+    {% if is_tertiary %}
+    <div class="stat-card"><div class="num">{{ stats.students }}</div><div class="label">Students</div></div>
+    <div class="stat-card"><div class="num">{{ stats.lecturers }}</div><div class="label">Lecturers</div></div>
+    {% else %}
+    <div class="stat-card"><div class="num">{{ stats.learners }}</div><div class="label">Learners</div></div>
+    <div class="stat-card"><div class="num">{{ stats.teachers }}</div><div class="label">Teachers</div></div>
+    {% endif %}
+    <div class="stat-card"><div class="num">{{ stats.classrooms }}</div><div class="label">Classrooms</div></div>
+  </div>
+
+  <p class="section-label">Quick access</p>
+  <section class="hero" style="padding:16px 20px;">
+    <p class="section-label" style="margin-top:0;">Portal Sections</p>
+    <form method="post" action="{{ url_for('admin_update_portal_settings', school_id=school.id) }}" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+      <label style="display:flex;gap:8px;align-items:center;">
+        <input type="checkbox" name="portal_marks_open" value="1" {% if portal_settings and portal_settings.marks_open %}checked{% endif %}>
+        Marks Section Enabled
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;">
+        <input type="checkbox" name="portal_reports_open" value="1" {% if portal_settings and portal_settings.reports_open %}checked{% endif %}>
+        Reports Section Enabled
+      </label>
+      <button class="btn btn-primary" type="submit">Save Portal Settings</button>
+    </form>
+  </section>
+
+  <div class="module-grid">
+    <a class="module-card" href="{{ url_for('admin_manage_students', school_id=school.id) }}">
+      <div class="mc-icon">{{ 'Students' if is_tertiary else 'Learners' }}</div>
+      <h3>{{ 'Students' if is_tertiary else 'Learners' }}</h3>
+      <p>Only the school-type matching enrolment category is shown and managed here.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('admin_manage_classrooms', school_id=school.id) }}">
+      <div class="mc-icon">Classrooms</div>
+      <h3>Classrooms</h3>
+      <p>Shows school-wide classes, filtered to the correct owner role for this school type.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('admin_manage_staff', school_id=school.id) }}">
+      <div class="mc-icon">Staff</div>
+      <h3>Staff</h3>
+      <p>Only {{ 'lecturers' if is_tertiary else 'teachers' }} are visible for this school.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('admin_applications', school_id=school.id) }}">
+      <div class="mc-icon">Applications</div>
+      <h3>Online Applications</h3>
+      <p>Review applicants, verify uploaded documents, and manage statuses.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('school_admin_contact_messages', school_id=school.id) }}">
+      <div class="mc-icon">Contact</div>
+      <h3>Contact Messages</h3>
+      <p>View enquiries submitted through your school website contact section.</p>
+    </a>
+    {% if not is_tertiary %}
+    <a class="module-card" href="{{ url_for('admin_manage_subjects', school_id=school.id) }}">
+      <div class="mc-icon">Subjects</div>
+      <h3>Subjects</h3>
+      <p>Create and remove subjects linked to this school.</p>
+    </a>
+    {% endif %}
+    {% if is_tertiary %}
+    <a class="module-card" href="{{ url_for('school_admin_courses', school_id=school.id) }}">
+      <div class="mc-icon">Courses</div>
+      <h3>Courses</h3>
+      <p>Create and manage tertiary courses for this school.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('school_admin_modules', school_id=school.id) }}">
+      <div class="mc-icon">Modules</div>
+      <h3>Modules</h3>
+      <p>Create and manage tertiary modules for this school.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('school_admin_curriculum', school_id=school.id) }}">
+      <div class="mc-icon">Mappings</div>
+      <h3>Course Mappings</h3>
+      <p>Map modules to courses by year and semester for this school.</p>
+    </a>
+    {% endif %}
+    <a class="module-card" href="{{ url_for('admin_manage_announcements', school_id=school.id) }}">
+      <div class="mc-icon">📢</div>
+      <h3>Announcements</h3>
+      <p>Create and manage school-wide announcements for your community.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('admin_manage_events', school_id=school.id) }}">
+      <div class="mc-icon">🎉</div>
+      <h3>Events</h3>
+      <p>Publish upcoming school events and schedule important dates.</p>
+    </a>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>

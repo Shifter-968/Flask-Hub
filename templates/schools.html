@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block body_class %}no-site-bg{% endblock %}
+
+{% block title %}Schools Directory{% endblock %}
+
+{% block content %}
+<style>
+    body.no-site-bg {
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+    .page-card {
+        background: white;
+        border: 1px solid #dbeafe;
+        box-shadow: 0 20px 45px rgba(59, 130, 246, 0.12);
+    }
+    section#schools {
+        padding: 4px;
+    }
+    .directory-header {
+        margin-bottom: 18px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .directory-search {
+        min-width: min(420px, 100%);
+    }
+    .directory-search input {
+        width: 100%;
+        padding: 10px 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 0.92rem;
+        color: #0f172a;
+        background: #ffffff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .directory-search input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+    .search-meta {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+    .directory-header h2 {
+        margin-bottom: 6px;
+        font-size: clamp(1.9rem, 3vw, 2.5rem);
+        color: #0f172a;
+        font-weight: 800;
+    }
+    .directory-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 1rem;
+    }
+    .school-category {
+        margin-top: 20px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    .schools-body {
+        position: relative;
+        padding-right: 0;
+        overflow: visible;
+    }
+    .category-dock {
+        position: absolute;
+        right: 0;
+        top: 8px;
+        transform: translateX(calc(100% + 12px));
+        width: 170px;
+        z-index: 70;
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 18px 32px rgba(37, 99, 235, 0.16);
+        backdrop-filter: blur(8px);
+        overflow: hidden;
+    }
+    .category-dock-title {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 800;
+        color: #475569;
+        background: #eff6ff;
+        padding: 10px 12px;
+        border-bottom: 1px solid #dbeafe;
+    }
+    .category-btn {
+        width: 100%;
+        border: none;
+        border-bottom: 1px solid #eef2ff;
+        background: #fff;
+        color: #334155;
+        text-align: left;
+        padding: 10px 12px;
+        font-size: 0.84rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+    .category-btn:last-child {
+        border-bottom: none;
+    }
+    .category-btn:hover {
+        background: #f8fbff;
+        color: #1d4ed8;
+    }
+    .category-btn.active {
+        background: linear-gradient(90deg, #dbeafe, #eff6ff);
+        color: #1e3a8a;
+    }
+    .category-title {
+        margin: 0;
+        padding: 14px 16px;
+        background: linear-gradient(90deg, #1e3a8a, #2563eb);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    .table-wrap {
+        overflow-x: auto;
+        background: #fff;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 0;
+        table-layout: fixed;
+    }
+    table th,
+    table td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid #eef2ff;
+        vertical-align: middle;
+        white-space: normal;
+        word-break: break-word;
+    }
+    table th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+        background: #f8fafc;
+        font-weight: 700;
+    }
+    table tr:hover td {
+        background: #f8fbff;
+    }
+    .school-name {
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .school-logo {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 1px solid #dbeafe;
+        background: #fff;
+        padding: 2px;
+    }
+    .visit-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 12px;
+        background: linear-gradient(135deg, #1d4ed8, #2563eb);
+        color: #fff;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.82rem;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .visit-link:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+    .empty-row {
+        text-align: center;
+        color: #94a3b8;
+        font-style: italic;
+    }
+    @media (max-width: 1280px) {
+        .category-dock {
+            position: static;
+            transform: none;
+            width: 100%;
+            margin-bottom: 14px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            border-radius: 12px;
+        }
+        .category-dock-title {
+            grid-column: span 2;
+        }
+    }
+    @media (max-width: 760px) {
+        .directory-search {
+            min-width: 100%;
+        }
+        .schools-body {
+            padding-right: 0;
+        }
+    }
+</style>
+
+<section id="schools">
+    <header class="directory-header">
+        <div>
+            <h2>Schools Directory</h2>
+            <p>Explore onboarded institutions and jump directly into each school hub.</p>
+        </div>
+        <div class="directory-search">
+            <input id="school-search"
+                   type="search"
+                   placeholder="Search by school name, contact number, or email..."
+                   autocomplete="off">
+            <div id="search-meta" class="search-meta">Showing all schools</div>
+        </div>
+    </header>
+
+    {% set pre_schools = schools | selectattr("school_type", "equalto", "pre_school") | list %}
+    {% set primary_schools = schools | selectattr("school_type", "equalto", "primary_school") | list %}
+    {% set high_schools = schools | selectattr("school_type", "equalto", "high_school") | list %}
+    {% set tertiary_schools = schools | selectattr("school_type", "equalto", "tertiary") | list %}
+
+    <div class="schools-body">
+    <aside class="category-dock" aria-label="School category quick filter">
+        <div class="category-dock-title">Quick Filter</div>
+        <button class="category-btn active" type="button" data-target="all">All Schools</button>
+        <button class="category-btn" type="button" data-target="pre_school">Pre-Schools</button>
+        <button class="category-btn" type="button" data-target="primary_school">Primary</button>
+        <button class="category-btn" type="button" data-target="high_school">High Schools</button>
+        <button class="category-btn" type="button" data-target="tertiary">Tertiary</button>
+    </aside>
+
+    <article class="school-category" data-category="pre_school">
+    <h3 class="category-title">Pre-Schools</h3>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th><th>Location</th><th>Logo</th>
+                <th>Contact Number</th><th>Contact Email</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="pre-schools-body">
+            {% for school in pre_schools %}
+            <tr>
+                <td class="school-name">{{ school.name }}</td>
+                <td>{{ school.location }}</td>
+                <td>{% if school.logo %}<img src="{{ school.logo }}" class="school-logo">{% else %}<span style="color:#94a3b8;">-</span>{% endif %}</td>
+                <td>{{ school.contact_number }}</td>
+                <td>{{ school.contact_email }}</td>
+                <td><a class="visit-link" href="{{ url_for('school_index', school_id=school.id) }}">Visit School</a>
+</td>
+            </tr>
+            {% else %}
+            <tr><td class="empty-row" colspan="6">No pre-schools onboarded yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </article>
+
+    <article class="school-category" data-category="primary_school">
+    <h3 class="category-title">Primary Schools</h3>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th><th>Location</th><th>Logo</th>
+                <th>Contact Number</th><th>Contact Email</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="primary-schools-body">
+            {% for school in primary_schools %}
+            <tr>
+                <td class="school-name">{{ school.name }}</td>
+                <td>{{ school.location }}</td>
+                <td>{% if school.logo %}<img src="{{ school.logo }}" class="school-logo">{% else %}<span style="color:#94a3b8;">-</span>{% endif %}</td>
+                <td>{{ school.contact_number }}</td>
+                <td>{{ school.contact_email }}</td>
+                <td><a class="visit-link" href="{{ url_for('school_index', school_id=school.id) }}">Visit School</a></td>
+            </tr>
+            {% else %}
+            <tr><td class="empty-row" colspan="6">No primary schools onboarded yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </article>
+
+    <article class="school-category" data-category="high_school">
+    <h3 class="category-title">High Schools</h3>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th><th>Location</th><th>Logo</th>
+                <th>Contact Number</th><th>Contact Email</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="high-schools-body">
+            {% for school in high_schools %}
+            <tr>
+                <td class="school-name">{{ school.name }}</td>
+                <td>{{ school.location }}</td>
+                <td>{% if school.logo %}<img src="{{ school.logo }}" class="school-logo">{% else %}<span style="color:#94a3b8;">-</span>{% endif %}</td>
+                <td>{{ school.contact_number }}</td>
+                <td>{{ school.contact_email }}</td>
+                <td><a class="visit-link" href="{{ url_for('school_index', school_id=school.id) }}">Visit School</a></td>
+            </tr>
+            {% else %}
+            <tr><td class="empty-row" colspan="6">No high schools onboarded yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </article>
+
+    <article class="school-category" data-category="tertiary">
+    <h3 class="category-title">Tertiary Institutions</h3>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th><th>Location</th><th>Logo</th>
+                <th>Contact Number</th><th>Contact Email</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tertiary-schools-body">
+            {% for school in tertiary_schools %}
+            <tr>
+                <td class="school-name">{{ school.name }}</td>
+                <td>{{ school.location }}</td>
+                <td>{% if school.logo %}<img src="{{ school.logo }}" class="school-logo">{% else %}<span style="color:#94a3b8;">-</span>{% endif %}</td>
+                <td>{{ school.contact_number }}</td>
+                <td>{{ school.contact_email }}</td>
+                <td><a class="visit-link" href="{{ url_for('school_index', school_id=school.id) }}">Visit School</a></td>
+            </tr>
+            {% else %}
+            <tr><td class="empty-row" colspan="6">No tertiary institutions onboarded yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </article>
+    </div>
+</section>
+
+<script>
+    const searchInput = document.getElementById('school-search');
+    const searchMeta = document.getElementById('search-meta');
+    const tbodyMap = {
+        pre_school: document.getElementById('pre-schools-body'),
+        primary_school: document.getElementById('primary-schools-body'),
+        high_school: document.getElementById('high-schools-body'),
+        tertiary: document.getElementById('tertiary-schools-body')
+    };
+    const categoryButtons = Array.from(document.querySelectorAll('.category-btn'));
+    const categorySections = Array.from(document.querySelectorAll('.school-category[data-category]'));
+    let activeCategory = 'all';
+
+    function applyCategoryFilter(category) {
+        activeCategory = category;
+        categoryButtons.forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.target === category);
+        });
+        categorySections.forEach((section) => {
+            const matches = category === 'all' || section.dataset.category === category;
+            section.style.display = matches ? '' : 'none';
+        });
+    }
+
+    function escapeHtml(value) {
+        const text = value == null ? '' : String(value);
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function rowTemplate(school) {
+        const logoHtml = school.logo
+            ? `<img src="${escapeHtml(school.logo)}" class="school-logo">`
+            : '<span style="color:#94a3b8;">-</span>';
+
+        return `
+            <tr>
+                <td class="school-name">${escapeHtml(school.name)}</td>
+                <td>${escapeHtml(school.location || '')}</td>
+                <td>${logoHtml}</td>
+                <td>${escapeHtml(school.contact_number || '')}</td>
+                <td>${escapeHtml(school.contact_email || '')}</td>
+                <td><a class="visit-link" href="/school/${school.id}">Visit School</a></td>
+            </tr>
+        `;
+    }
+
+    function emptyTemplate(message) {
+        return `<tr><td class="empty-row" colspan="6">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderSchools(schools, searchText) {
+        const buckets = {
+            pre_school: [],
+            primary_school: [],
+            high_school: [],
+            tertiary: []
+        };
+
+        schools.forEach((school) => {
+            if (buckets[school.school_type]) {
+                buckets[school.school_type].push(school);
+            }
+        });
+
+        const hasSearch = (searchText || '').trim().length > 0;
+        const emptyMessages = {
+            pre_school: hasSearch ? 'No matching pre-schools found.' : 'No pre-schools onboarded yet.',
+            primary_school: hasSearch ? 'No matching primary schools found.' : 'No primary schools onboarded yet.',
+            high_school: hasSearch ? 'No matching high schools found.' : 'No high schools onboarded yet.',
+            tertiary: hasSearch ? 'No matching tertiary institutions found.' : 'No tertiary institutions onboarded yet.'
+        };
+
+        Object.keys(tbodyMap).forEach((key) => {
+            const body = tbodyMap[key];
+            if (!body) return;
+            body.innerHTML = buckets[key].length
+                ? buckets[key].map(rowTemplate).join('')
+                : emptyTemplate(emptyMessages[key]);
+        });
+
+        applyCategoryFilter(activeCategory);
+
+        if (hasSearch) {
+            searchMeta.textContent = `${schools.length} result${schools.length === 1 ? '' : 's'} found for "${searchText}"`;
+        } else {
+            searchMeta.textContent = 'Showing all schools';
+        }
+    }
+
+    let debounceTimer = null;
+
+    async function runSearch() {
+        const q = searchInput.value.trim();
+        const endpoint = `/schools/live-search?q=${encodeURIComponent(q)}`;
+
+        try {
+            const response = await fetch(endpoint);
+            const payload = await response.json();
+            renderSchools(payload.schools || [], q);
+        } catch (error) {
+            searchMeta.textContent = 'Search unavailable right now. Please retry.';
+        }
+    }
+
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(runSearch, 230);
+    });
+
+    categoryButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            applyCategoryFilter(btn.dataset.target);
+        });
+    });
+
+    applyCategoryFilter('all');
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+<h2>Select Course</h2>
+<form method="post" action="{{ url_for('select_course') }}">
+  <label>Course:</label>
+  <select name="course_id" required>
+    {% for course in courses %}
+      <option value="{{ course.id }}">{{ course.name }} ({{ course.code }})</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Next</button>
+</form>
+<select name="course_id">
+  {% for course in courses %}
+    <option value="{{ course.id }}">{{ course.name }} ({{ course.code }})</option>
+  {% endfor %}
+</select>
+

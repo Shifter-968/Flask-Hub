@@ -1,0 +1,149 @@
+Title: 
+
+URL Source: http://emrcollege.ac.sz/wp-json/wp/v2/pages?per_page=100
+
+Markdown Content:
+[{"id":9102,"date":"2026-04-15T14:34:51","date_gmt":"2026-04-15T14:34:51","guid":{"rendered":"https:\/\/emrcollege.ac.sz\/?page_id=9102"},"modified":"2026-04-16T10:29:03","modified_gmt":"2026-04-16T10:29:03","slug":"elementor-page-9102","status":"publish","type":"page","link":"https:\/\/emrcollege.ac.sz\/index.php\/elementor-page-9102\/","title":{"rendered":"it intern"},"content":{"rendered":"\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t\t\t\t\t\t
+**Job Title: IT INTERN\u00a0<\/strong><\/p>
+Context<\/span><\/p>
+The IT & Academic Support Intern will assist in the daily operations of the IT Department and support academic activities within the computer lab. The role is designed to provide practical experience in IT support, systems maintenance, and classroom assistance while contributing to the efficiency of the department.<\/p>
+
+**Key Responsibilities<\/strong><\/p>
+1. **Academic Support<\/strong><\/p>
+*   Assist during practical computer lessons and support students with tasks \u2022 Help prepare learning materials and set up for classes \u2022 Assist with marking assignments, tests, and basic record-keeping \u2022 Provide basic guidance to students on computer usage and applications<\/li><\/ul>
+2.**Computer Lab Management<\/strong><\/p>
+    *   \u00a0Set up and prepare the computer lab before classes \u2022 Ensure all computers, projectors, and equipment are functional \u2022 Report faults or issues with equipment \u2022 Assist during events, meetings, and presentations requiring IT setup<\/li><\/ul>
+**Minimum Requirements<\/strong><\/p>
+        *   Diploma or Associate Degree in Information Technology,<\/li>
+        *   Computer Science, or related field<\/li>
+        *   Basic knowledge of computer hardware, software, and networking<\/li>
+        *   \u00a0Familiarity with Microsoft Office and common applications<\/li>
+        *   Willingness to learn and take initiative<\/li><\/ul>
+………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………<\/p>
+
+**How to Apply<\/strong><\/p>
+            *   Send your CV, Certified academic documents and a cover letter to **hroemrc@gmail.com<\/strong> with the subject lines; IT & Academic Support Intern. **Closing date; 22\/04\/2026.<\/strong><\/li><\/ul>\t\t\t\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t","protected":false},"excerpt":{"rendered":"
+Job Title: IT INTERN\u00a0 Context The IT & Academic Support Intern will assist in the daily operations of the IT […]<\/p>\n","protected":false},"author":1,"featured_media":0,"parent":0,"menu_order":0,"comment_status":"closed","ping_status":"closed","template":"","meta":{"om_disable_all_campaigns":false,"_monsterinsights_skip_tracking":false,"_monsterinsights_sitenote_active":false,"_monsterinsights_sitenote_note":"","_monsterinsights_sitenote_category":0,"site-sidebar-layout":"no-sidebar","site-content-layout":"","ast-site-content-layout":"full-width-container","site-content-style":"default","site-sidebar-style":"default","ast-global-header-display":"","ast-banner-title-visibility":"","ast-main-header-display":"","ast-hfb-above-header-display":"","ast-hfb-below-header-display":"","ast-hfb-mobile-header-display":"","site-post-title":"disabled","ast-breadcrumbs-content":"","ast-featured-img":"disabled","footer-sml-layout":"","theme-transparent-header-meta":"","adv-header-id-meta":"","stick-header-meta":"","header-above-stick-meta":"","header-main-stick-meta":"","header-below-stick-meta":"","astra-migrate-meta-layouts":"default","ast-page-background-enabled":"default","ast-page-background-meta":{"desktop":{"background-color":"var(--ast-global-color-4)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"tablet":{"background-color":"","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"mobile":{"background-color":"","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""}},"ast-content-background-meta":{"desktop":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"tablet":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"mobile":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""}},"footnotes":""},"class_list":["post-9102","page","type-page","status-publish","hentry"],"aioseo_notices":[],"jetpack_sharing_enabled":true,"_links":{"self":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9102","targetHints":{"allow":["GET"]}}],"collection":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages"}],"about":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/types\/page"}],"author":[{"embeddable":true,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/users\/1"}],"replies":[{"embeddable":true,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/comments?post=9102"}],"version-history":[{"count":19,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9102\/revisions"}],"predecessor-version":[{"id":9139,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9102\/revisions\/9139"}],"wp:attachment":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/media?parent=9102"}],"curies":[{"name":"wp","href":"https:\/\/api.w.org\/{rel}","templated":true}]}},{"id":9090,"date":"2026-04-15T14:26:39","date_gmt":"2026-04-15T14:26:39","guid":{"rendered":"https:\/\/emrcollege.ac.sz\/?page_id=9090"},"modified":"2026-04-16T10:28:26","modified_gmt":"2026-04-16T10:28:26","slug":"drrm-lecturer","status":"publish","type":"page","link":"https:\/\/emrcollege.ac.sz\/index.php\/drrm-lecturer\/","title":{"rendered":"DRRM LECTURER"},"content":{"rendered":"\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t\t\t\t\t\t
+**Job Title: DRRM LECTURER\u00a0<\/strong><\/p>
+Context<\/span><\/p>
+We are a dynamic and growing Institution, committed to Academic excellence in the field of higher education. We value integrity, teamwork, and innovation, and we\u2019re looking for a detail-oriented Lecturer to join our Emergency Medical Rescue College team.<\/p>
+
+**Key Responsibilities<\/strong><\/p>
+                *   Develop and teach courses on various aspects of disaster management.<\/li>
+                *   Deliver lectures, facilitate discussions, and provide individual student support.<\/li>
+                *   \u00a0Conduct independent research on disaster management topics.<\/li>
+                *   \u00a0Collaborate with other researchers and practitioners to advance knowledge in the field.<\/li>
+                *   Participate in curriculum development initiatives for the disaster management program.<\/li>
+                *   \u00a0Provide consultancy services on disaster risk reduction and mitigation strategies.<\/li><\/ul>
+**Requirements & Qualifications<\/strong><\/p>
+                    *   \u00a0PhD or Master’s degree in Disaster Management, Emergency Management,
+
+Environmental Science, Geography or a related field.<\/li>
+                    *   \u00a0Proven teaching experience in disaster management at the undergraduate and\/or
+
+Postgraduate level for 3 to 5 years.<\/li>
+                    *   \u00a0Strong research background with publications in peer-reviewed journals.<\/li>
+                    *   Familiarity with disaster management frameworks, methodologies, and best practices.<\/li>
+                    *   \u00a0Excellent communication and interpersonal skills to effectively interact with students,
+
+Colleagues, and external stakeholders.<\/li><\/ul>
+………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………<\/p>
+
+**How to Apply<\/strong><\/p>
+                        *   How to Apply
+
+Send your CV, Certified academic documents and a cover letter to **hroemrc@gmail.com<\/strong> with the subject line DRRM Lecturer Job Application. **Closing date 30\/04\/2026.<\/strong><\/li><\/ul>\t\t\t\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t","protected":false},"excerpt":{"rendered":"
+Job Title: DRRM LECTURER\u00a0 Context We are a dynamic and growing Institution, committed to Academic excellence in the field of […]<\/p>\n","protected":false},"author":1,"featured_media":0,"parent":0,"menu_order":0,"comment_status":"closed","ping_status":"closed","template":"","meta":{"om_disable_all_campaigns":false,"_monsterinsights_skip_tracking":false,"_monsterinsights_sitenote_active":false,"_monsterinsights_sitenote_note":"","_monsterinsights_sitenote_category":0,"site-sidebar-layout":"no-sidebar","site-content-layout":"","ast-site-content-layout":"full-width-container","site-content-style":"default","site-sidebar-style":"default","ast-global-header-display":"","ast-banner-title-visibility":"","ast-main-header-display":"","ast-hfb-above-header-display":"","ast-hfb-below-header-display":"","ast-hfb-mobile-header-display":"","site-post-title":"disabled","ast-breadcrumbs-content":"","ast-featured-img":"disabled","footer-sml-layout":"","theme-transparent-header-meta":"","adv-header-id-meta":"","stick-header-meta":"","header-above-stick-meta":"","header-main-stick-meta":"","header-below-stick-meta":"","astra-migrate-meta-layouts":"default","ast-page-background-enabled":"default","ast-page-background-meta":{"desktop":{"background-color":"var(--ast-global-color-4)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"tablet":{"background-color":"","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"mobile":{"background-color":"","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""}},"ast-content-background-meta":{"desktop":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"tablet":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"mobile":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""}},"footnotes":""},"class_list":["post-9090","page","type-page","status-publish","hentry"],"aioseo_notices":[],"jetpack_sharing_enabled":true,"_links":{"self":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9090","targetHints":{"allow":["GET"]}}],"collection":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages"}],"about":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/types\/page"}],"author":[{"embeddable":true,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/users\/1"}],"replies":[{"embeddable":true,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/comments?post=9090"}],"version-history":[{"count":13,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9090\/revisions"}],"predecessor-version":[{"id":9136,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9090\/revisions\/9136"}],"wp:attachment":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/media?parent=9090"}],"curies":[{"name":"wp","href":"https:\/\/api.w.org\/{rel}","templated":true}]}},{"id":9069,"date":"2026-04-15T14:00:52","date_gmt":"2026-04-15T14:00:52","guid":{"rendered":"https:\/\/emrcollege.ac.sz\/?page_id=9069"},"modified":"2026-04-16T10:05:36","modified_gmt":"2026-04-16T10:05:36","slug":"elementor-page-9069","status":"publish","type":"page","link":"https:\/\/emrcollege.ac.sz\/index.php\/elementor-page-9069\/","title":{"rendered":"LECTURER 1 & 2"},"content":{"rendered":"\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t
+
+\n\t\t\t\t\t\t\t\t\t
+**Job Title: LECTURER 1 & 2\u00a0<\/strong><\/p>
+Context<\/span><\/p>
+1. **Lecturer \u2013 Nursing Background<\/strong>
+
+The college seeks a qualified nurse educator to support the training of future emergency medical and healthcare professionals.<\/p>
+**Key Responsibilities<\/strong><\/p>
+                            *   Deliver lectures and practical instruction in nursing and clinical sciences relevant to emergency medical care.<\/li>
+                            *   \u00a0Facilitate simulation training, clinical skills development, and case-based learning.<\/li>
+                            *   Support students during clinical placements and professional practice training.<\/li>
+                            *   Contribute to curriculum development and continuous improvement of training programmes.<\/li>
+                            *   Participate in academic assessment, moderation, and student mentorship.<\/li>
+                            *   Engage in professional development and applied research activities.<\/li>
+                            *   \u00a0Contribute to community outreach, health education, and public health initiatives where applicable.\u00a0<\/li><\/ul>
+**Requirements and Qualifications<\/strong><\/p>
+                                *   Bachelor\u2019s degree in Nursing as a foundational qualification.<\/li>
+                                *   Master\u2019s degree in Nursing or Public Health.<\/li>
+                                *   A PhD in a related field will be considered an added advantage.<\/li>
+                                *   Minimum 3 years teaching or clinical experience.<\/li>
+                                *   Registration with the Eswatini Nursing Council or eligibility for registration.<\/li>
+                                *   \u00a0Strong clinical, teaching, and communication skills.\u00a0 \u00a0<\/li><\/ul>
+2. **Lecturer \u2013 Medicine Background<\/strong><\/p>
+The college invites applications from medical professionals who are passionate about training future healthcare and emergency response professionals.
+
+**Key Responsibilities<\/strong><\/p>
+                                    *   Deliver lectures in medical sciences relevant to emergency medicine and clinical care.<\/li>
+                                    *   Facilitate case-based learning, clinical reasoning, and emergency care simulations.<\/li>
+                                    *   Support students in developing clinical decision-making and patient management skills.<\/li>
+                                    *   Participate in curriculum development and academic programme review.<\/li>
+                                    *   Provide mentorship and academic guidance to students.<\/li>
+                                    *   Contribute to interdisciplinary teaching within emergency medical and health sciences programmes.<\/li>
+                                    *   Participate in research and academic development initiatives within the college.
+
+Requirements and Qualifications<\/li>
+                                    *   \u00a0Degree in Medicine (MBBS or MBChB).<\/li>
+                                    *   Registration with the Eswatini Medical and Dental Council (EMDC).<\/li>
+                                    *   \u00a0Minimum 2 years clinical or teaching experience.<\/li>
+                                    *   \u00a0Interest in medical education and emergency healthcare training.<\/li>
+                                    *   Strong communication, teaching, and leadership skills<\/li><\/ul>
+………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………………<\/p>
+
+**How to Apply<\/strong><\/p>
+Interested candidates should submit the following documents:<\/p>
+
+                                        *   Curriculum Vitae (CV)<\/li>
+                                        *   Certified academic certificates and transcripts<\/li>
+                                        *   Certified professional registration documents (where applicable)<\/li>
+                                        *   A cover letter indicating the position applied for<\/li><\/ul>
+Applications should be sent to:
+
+**hroemrc@gmail.com<\/strong>
+
+Please indicate the subject line as one of the following:<\/p>
+                                            *   \u00a0Lecturer \u2013 Nursing Background<\/li>
+                                            *   Lecturer \u2013 Medicine Background
+
+**Application Closing Date: 30 April 2026<\/strong><\/li><\/ul>\t\t\t\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t","protected":false},"excerpt":{"rendered":"
+Job Title: LECTURER 1 & 2\u00a0 Context 1. Lecturer \u2013 Nursing BackgroundThe college seeks a qualified nurse educator to support […]<\/p>\n","protected":false},"author":1,"featured_media":0,"parent":0,"menu_order":0,"comment_status":"closed","ping_status":"closed","template":"","meta":{"om_disable_all_campaigns":false,"_monsterinsights_skip_tracking":false,"_monsterinsights_sitenote_active":false,"_monsterinsights_sitenote_note":"","_monsterinsights_sitenote_category":0,"site-sidebar-layout":"no-sidebar","site-content-layout":"","ast-site-content-layout":"full-width-container","site-content-style":"default","site-sidebar-style":"default","ast-global-header-display":"","ast-banner-title-visibility":"","ast-main-header-display":"","ast-hfb-above-header-display":"","ast-hfb-below-header-display":"","ast-hfb-mobile-header-display":"","site-post-title":"disabled","ast-breadcrumbs-content":"","ast-featured-img":"disabled","footer-sml-layout":"","theme-transparent-header-meta":"","adv-header-id-meta":"","stick-header-meta":"","header-above-stick-meta":"","header-main-stick-meta":"","header-below-stick-meta":"","astra-migrate-meta-layouts":"default","ast-page-background-enabled":"default","ast-page-background-meta":{"desktop":{"background-color":"var(--ast-global-color-4)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"tablet":{"background-color":"","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"mobile":{"background-color":"","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""}},"ast-content-background-meta":{"desktop":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"tablet":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""},"mobile":{"background-color":"var(--ast-global-color-5)","background-image":"","background-repeat":"repeat","background-position":"center center","background-size":"auto","background-attachment":"scroll","background-type":"","background-media":"","overlay-type":"","overlay-color":"","overlay-gradient":""}},"footnotes":""},"class_list":["post-9069","page","type-page","status-publish","hentry"],"aioseo_notices":[],"jetpack_sharing_enabled":true,"_links":{"self":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9069","targetHints":{"allow":["GET"]}}],"collection":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages"}],"about":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/types\/page"}],"author":[{"embeddable":true,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/users\/1"}],"replies":[{"embeddable":true,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/comments?post=9069"}],"version-history":[{"count":16,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9069\/revisions"}],"predecessor-version":[{"id":9121,"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/pages\/9069\/revisions\/9121"}],"wp:attachment":[{"href":"https:\/\/emrcollege.ac.sz\/index.php\/wp-json\/wp\/v2\/media?parent=9069"}],"curies":[{"name":"wp","href":"https:\/\/api.w.org\/{rel}","templated":true}]}},{"id":9001,"date":"2026-02-12T12:43:14","date_gmt":"2026-02-12T12:43:14","guid":{"rendered":"https:\/\/emrcollege.ac.sz\/?page_id=9001"},"modified":"2026-02-12T12:43:33","modified_gmt":"2026-02-12T12:43:33","slug":"elementor-page-9001","status":"publish","type":"page","link":"https:\/\/emrcollege.ac.sz\/index.php\/elementor-page-9001\/","title":{"rendered":"Elementor Page #9001"},"content":{"rendered":"\t\t
+
+\n\t\t\t\t\n\t\t\t\t\t\n\t\t\n\t\t\t\t\n\t\t\t\t\n\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t\t<\/span>\n\t\t<\/div>\n\t\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t\n\t\t\t\t\n\t\t\t\t\t
+##### REGISTRAR POSITION<\/h5>\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t\n\t\t\t\t\n\t\t\t\t\t\t\t\t\t
+The Eswatini University of Applied Sciences (ESUAS) is a new University looking to open in August, 2026 to offer Certificate, Diploma and Degree programmes that have been accredited by the Eswatini Higher Education Council (ESHEC).\u00a0The institution would like to invite suitably qualified candidates to fill a newly established position of the Registrar as soon as possible.<\/p>\t\t\t\t\t\t\t\t<\/div>\n\t\t\t\t<\/div>\n\t\t\t\t
+
+\n\t\t\t\t\n\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t[\n\t\t\t\t\t\t\n\t\t\t\t\t\t\n\t\t\t\t](http://emrcollege.ac.sz/%22https:////emrcollege.ac.sz//index.php//pm///%22)**********************************************

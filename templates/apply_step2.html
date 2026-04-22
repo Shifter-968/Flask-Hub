@@ -1,0 +1,113 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 2 – Personal Information{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 2: Personal Information</h2>
+  <p class="card-sub">Please fill in your personal details exactly as they appear on your ID document.</p>
+
+  <form method="POST" action="{{ url_for('apply_step2', school_id=school.id) }}">
+    <div class="form-grid two-col">
+
+      <div class="field">
+        <label for="title">Title</label>
+        <select name="title" id="title">
+          <option value="">— Select —</option>
+          {% for t in ['Mr','Mrs','Ms','Miss','Dr','Prof','Rev'] %}
+          <option value="{{ t }}" {% if draft and draft.title == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="surname">Surname <span class="req">*</span></label>
+        <input type="text" name="surname" id="surname" placeholder="e.g. Dlamini" value="{{ draft.surname or '' }}" required>
+      </div>
+
+      <div class="field full">
+        <label for="first_names">First Name(s) <span class="req">*</span></label>
+        <input type="text" name="first_names" id="first_names" placeholder="e.g. Sipho Lungelo" value="{{ draft.first_names or '' }}" required>
+      </div>
+
+      <div class="field">
+        <label for="dob">Date of Birth <span class="req">*</span></label>
+        <input type="date" name="dob" id="dob" value="{{ draft.dob or '' }}" required>
+      </div>
+
+      <div class="field">
+        <label for="gender">Gender <span class="req">*</span></label>
+        <select name="gender" id="gender">
+          <option value="">— Select —</option>
+          {% for g in ['Male','Female','Non-binary','Prefer not to say'] %}
+          <option value="{{ g }}" {% if draft and draft.gender == g %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="marital_status">Marital Status</label>
+        <select name="marital_status" id="marital_status">
+          <option value="">— Select —</option>
+          {% for ms in ['Single','Married','Divorced','Widowed'] %}
+          <option value="{{ ms }}" {% if draft and draft.marital_status == ms %}selected{% endif %}>{{ ms }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="nationality">Nationality</label>
+        <input type="text" name="nationality" id="nationality" placeholder="e.g. Swati" value="{{ draft.nationality or '' }}">
+      </div>
+
+      <div class="field">
+        <label for="region">Region / Province</label>
+        <input type="text" name="region" id="region" placeholder="e.g. Hhohho" value="{{ draft.region or '' }}">
+      </div>
+
+      <div class="field full">
+        <label for="national_id">National ID / Passport Number <span class="req">*</span></label>
+        <input type="text" name="national_id" id="national_id" placeholder="e.g. 123456789" value="{{ draft.national_id or '' }}" required>
+      </div>
+
+      <div class="field full">
+        <label>Disability <span class="req">*</span></label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="disability" value="no" {% if not draft or not draft.disability or draft.disability == 'no' %}checked{% endif %}> No</label>
+          <label class="radio-opt"><input type="radio" name="disability" value="yes" {% if draft and draft.disability == 'yes' %}checked{% endif %}> Yes</label>
+        </div>
+      </div>
+
+      <div class="field full" id="disability-detail-row" style="display:{% if draft and draft.disability == 'yes' %}block{% else %}none{% endif %};">
+        <label for="disability_description">Please describe your disability</label>
+        <textarea name="disability_description" id="disability_description" placeholder="Describe the nature of the disability...">{{ draft.disability_description or '' }}</textarea>
+      </div>
+
+      <div class="field">
+        <label for="email">Email Address <span class="req">*</span></label>
+        <input type="email" name="email" id="email" placeholder="e.g. sipho@email.com" value="{{ draft.email or '' }}" required>
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone Number <span class="req">*</span></label>
+        <input type="tel" name="phone" id="phone" placeholder="+268 7XXX XXXX" value="{{ draft.phone or '' }}" required>
+      </div>
+
+    </div>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_step1', school_id=school.id) }}" class="btn-back">← Back</a>
+      <button type="submit" class="btn-next">Next: Guardian / Payer →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const disabilityRadios = document.querySelectorAll('input[name="disability"]');
+  const detailRow = document.getElementById('disability-detail-row');
+  disabilityRadios.forEach(r => r.addEventListener('change', () => {
+    detailRow.style.display = r.value === 'yes' && r.checked ? 'block' : (document.querySelector('input[name="disability"]:checked')?.value === 'yes' ? 'block' : 'none');
+  }));
+</script>
+{% endblock %}

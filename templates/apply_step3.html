@@ -1,0 +1,65 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 3 – Guardian / Payer Details{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 3: Guardian / Responsible Payer</h2>
+  <p class="card-sub">Details of the person responsible for paying tuition fees, or your parent/guardian.</p>
+
+  <form method="POST" action="{{ url_for('apply_step3', school_id=school.id) }}">
+    <div class="form-grid two-col">
+
+      <div class="field">
+        <label for="payer_title">Title</label>
+        <select name="payer_title" id="payer_title">
+          <option value="">— Select —</option>
+          {% for t in ['Mr','Mrs','Ms','Miss','Dr','Prof','Rev'] %}
+          <option value="{{ t }}" {% if draft and draft.payer_title == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="payer_surname">Surname <span class="req">*</span></label>
+        <input type="text" name="payer_surname" id="payer_surname" placeholder="e.g. Dlamini" value="{{ draft.payer_surname or '' }}" required>
+      </div>
+
+      <div class="field full">
+        <label for="payer_relationship">Relationship to Applicant <span class="req">*</span></label>
+        <select name="payer_relationship" id="payer_relationship" required>
+          <option value="">— Select relationship —</option>
+          {% for rel in ['Parent','Guardian','Spouse','Employer','Self','Other'] %}
+          <option value="{{ rel }}" {% if draft and draft.payer_relationship == rel %}selected{% endif %}>{{ rel }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="payer_tel">Telephone Number <span class="req">*</span></label>
+        <input type="tel" name="payer_tel" id="payer_tel" placeholder="+268 7XXX XXXX" value="{{ draft.payer_tel or '' }}" required>
+      </div>
+
+      <div class="field">
+        <label for="payer_mobile">Mobile Number <span class="req">*</span></label>
+        <input type="tel" name="payer_mobile" id="payer_mobile" placeholder="+268 7XXX XXXX" value="{{ draft.payer_mobile or '' }}" required>
+      </div>
+
+      <div class="field full">
+        <label for="payer_email">Email Address <span class="req">*</span></label>
+        <input type="email" name="payer_email" id="payer_email" placeholder="e.g. parent@email.com" value="{{ draft.payer_email or '' }}" required>
+      </div>
+
+      <div class="field full">
+        <label for="payer_address">Residential Address <span class="req">*</span></label>
+        <textarea name="payer_address" id="payer_address" placeholder="Street, area, city, country..." required>{{ draft.payer_address or '' }}</textarea>
+      </div>
+
+    </div>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_step2', school_id=school.id) }}" class="btn-back">← Back</a>
+      <button type="submit" class="btn-next">Next: Academic Background →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

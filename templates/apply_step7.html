@@ -1,0 +1,99 @@
+{% extends "apply_base.html" %}
+{% block page_title %}Step 7 – Review & Submit{% endblock %}
+
+{% block content %}
+<div class="page-card">
+  <h2>Step 7: Review & Submit</h2>
+  <p class="card-sub">Please review all your details carefully before submitting. Once submitted you will receive a reference number.</p>
+
+  {# ── Programme ── #}
+  <div class="review-section">
+    <h4>Programme Selection <a href="{{ url_for('apply_step1', school_id=school.id) }}" class="review-edit">Edit</a></h4>
+    <div class="review-row"><span class="review-label">Academic Year</span><span class="review-value">{{ draft.academic_year or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Qualification</span><span class="review-value">{{ draft.qualification or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Study Mode</span><span class="review-value">{{ draft.section or '—' }}</span></div>
+  </div>
+
+  {# ── Personal Info ── #}
+  <div class="review-section">
+    <h4>Personal Information <a href="{{ url_for('apply_step2', school_id=school.id) }}" class="review-edit">Edit</a></h4>
+    <div class="review-row"><span class="review-label">Full Name</span><span class="review-value">{{ (draft.title or '') }} {{ draft.surname or '—' }}, {{ draft.first_names or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Date of Birth</span><span class="review-value">{{ draft.dob or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Gender</span><span class="review-value">{{ draft.gender or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Nationality</span><span class="review-value">{{ draft.nationality or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">National ID / Passport</span><span class="review-value">{{ draft.national_id or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Disability</span><span class="review-value">{{ (draft.disability or 'No')|capitalize }}{% if draft.disability == 'yes' and draft.disability_description %}: {{ draft.disability_description }}{% endif %}</span></div>
+    <div class="review-row"><span class="review-label">Region</span><span class="review-value">{{ draft.region or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Email</span><span class="review-value">{{ draft.email or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Phone</span><span class="review-value">{{ draft.phone or '—' }}</span></div>
+  </div>
+
+  {# ── Guardian / Payer ── #}
+  <div class="review-section">
+    <h4>Guardian / Responsible Payer <a href="{{ url_for('apply_step3', school_id=school.id) }}" class="review-edit">Edit</a></h4>
+    <div class="review-row"><span class="review-label">Name</span><span class="review-value">{{ (draft.payer_title or '') }} {{ draft.payer_surname or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Relationship</span><span class="review-value">{{ draft.payer_relationship or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Telephone</span><span class="review-value">{{ draft.payer_tel or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Mobile</span><span class="review-value">{{ draft.payer_mobile or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Email</span><span class="review-value">{{ draft.payer_email or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Address</span><span class="review-value">{{ draft.payer_address or '—' }}</span></div>
+  </div>
+
+  {# ── Academic Background ── #}
+  <div class="review-section">
+    <h4>Academic Background <a href="{{ url_for('apply_step4', school_id=school.id) }}" class="review-edit">Edit</a></h4>
+    <div class="review-row"><span class="review-label">Highest Qualification</span><span class="review-value">{{ draft.highest_qualification or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Institution</span><span class="review-value">{{ draft.institution_attended or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Year Completed</span><span class="review-value">{{ draft.year_completed or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">RPL Application</span><span class="review-value">{% if draft.has_rpl %}Yes{% else %}No{% endif %}</span></div>
+  </div>
+
+  {# ── Documents ── #}
+  <div class="review-section">
+    <h4>Uploaded Documents <a href="{{ url_for('apply_step5', school_id=school.id) }}" class="review-edit">Edit</a></h4>
+    {% if docs %}
+    {% for doc in docs %}
+    <div class="review-row">
+      <span class="review-label">{{ doc.doc_type.replace('_', ' ')|title }}</span>
+      <span class="review-value" style="color:#16a34a;">✓ {{ doc.original_name or 'Uploaded' }}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="review-row"><span class="review-value" style="color:#e53e3e;">⚠ No documents uploaded yet</span></div>
+    {% endif %}
+  </div>
+
+  {# ── Payment ── #}
+  <div class="review-section">
+    <h4>Payment Details <a href="{{ url_for('apply_step6', school_id=school.id) }}" class="review-edit">Edit</a></h4>
+    <div class="review-row"><span class="review-label">Reference Used</span><span class="review-value">{{ draft.payment_reference or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Deposit Date</span><span class="review-value">{{ draft.payment_date or '—' }}</span></div>
+    <div class="review-row"><span class="review-label">Amount</span><span class="review-value">E 300.00</span></div>
+  </div>
+
+</div>
+
+{# ── Declaration + Submit ── #}
+<div class="page-card">
+  <h2>Declaration</h2>
+  <p style="font-size:0.9rem; color:var(--muted); margin-bottom:18px;">By submitting this form, you certify that:</p>
+  <ul style="font-size:0.88rem; color:#374151; padding-left:20px; display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
+    <li>All information provided in this application is <strong>true, correct and complete</strong>.</li>
+    <li>All documents submitted are <strong>genuine and duly certified</strong>.</li>
+    <li>You understand that providing false information may result in immediate rejection or cancellation of enrolment.</li>
+    <li>You have read and understood the <strong>Instructions for Completing the Application Form</strong>.</li>
+  </ul>
+
+  <form method="POST" action="{{ url_for('apply_submit', school_id=school.id) }}">
+    <label class="radio-opt" style="margin-bottom:20px; font-size:0.92rem; align-items:flex-start; gap:12px;">
+      <input type="checkbox" name="declaration_accepted" value="yes" required style="width:20px; height:20px; margin-top:2px; accent-color:var(--brand);">
+      <span>I declare that all information entered in this application form is true and correct, and I accept the terms above.</span>
+    </label>
+
+    <div class="form-nav">
+      <a href="{{ url_for('apply_step6', school_id=school.id) }}" class="btn-back">← Back</a>
+      <button type="submit" class="btn-next btn-green">Submit Application ✓</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

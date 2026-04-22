@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ 'Manage Students' if is_tertiary else 'Manage Learners' }} | {{ school.name }}</title>
+  <style>
+    :root {
+      --bg:#0d1122; --bg2:#141b34;
+      --panel:rgba(15,23,42,.88); --line:rgba(255,255,255,.18);
+      --text:#eef2ff; --muted:#b6c2dd;
+      --accent:#67e8c7; --accent2:#89b4ff;
+      --danger:#f87171;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;min-height:100vh;
+      font-family:"Space Grotesk","Segoe UI",sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 400px at 5% 0%,rgba(103,232,199,.13),transparent 60%),
+        radial-gradient(900px 500px at 100% 100%,rgba(137,180,255,.18),transparent 55%),
+        linear-gradient(155deg,var(--bg),var(--bg2));
+      padding:clamp(14px,2vw,28px);
+    }
+    .wrap{width:min(1100px,100%);margin:0 auto;display:grid;gap:16px;}
+    .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .back{text-decoration:none;color:var(--accent);font-size:.9rem;}
+    .back:hover{text-decoration:underline;}
+    h1{margin:0;font-size:clamp(1.5rem,3vw,2.2rem);}
+    .panel{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:clamp(14px,2vw,24px);}
+    .panel h2{margin:0 0 16px;font-size:1.1rem;color:var(--accent);}
+    .form-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:12px;}
+    .field{display:flex;flex-direction:column;gap:5px;}
+    .field label{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+    .field input,.field select{
+      padding:9px 12px;border-radius:10px;
+      border:1px solid var(--line);background:rgba(255,255,255,.07);
+      color:var(--text);font-size:.92rem;
+    }
+    .field input::placeholder{color:#778da9;}
+    .btn{
+      border-radius:10px;padding:10px 20px;font-weight:700;font-size:.92rem;
+      border:0;cursor:pointer;
+    }
+    .btn-primary{background:linear-gradient(130deg,var(--accent),var(--accent2));color:#07202b;}
+    .btn-danger{background:var(--danger);color:#fff;padding:6px 12px;font-size:.82rem;}
+    table{width:100%;border-collapse:collapse;font-size:.9rem;}
+    th{text-align:left;padding:10px 12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;}
+    td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);}
+    tr:last-child td{border-bottom:0;}
+    tr:hover td{background:rgba(255,255,255,.04);}
+    .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.76rem;font-weight:700;}
+    .badge-green{background:rgba(103,232,199,.15);color:var(--accent);}
+    .badge-gray{background:rgba(255,255,255,.08);color:var(--muted);}
+    .empty{text-align:center;padding:40px;color:var(--muted);font-style:italic;}
+    .flash-success{background:rgba(103,232,199,.15);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;color:var(--accent);margin-bottom:12px;}
+    .flash-error{background:rgba(248,113,113,.12);border:1px solid var(--danger);border-radius:10px;padding:10px 14px;color:var(--danger);margin-bottom:12px;}
+    .flash-info{background:rgba(137,180,255,.12);border:1px solid var(--accent2);border-radius:10px;padding:10px 14px;color:var(--accent2);margin-bottom:12px;}
+  </style>
+</head>
+<body>
+<main class="wrap">
+
+  <div class="topbar">
+    <a class="back" href="{{ url_for('school_admin_dashboard', school_id=school.id) }}">← Back to Admin Dashboard</a>
+  </div>
+  <h1>{{ '👨‍🎓 Students' if is_tertiary else '🧒 Learners' }} — {{ school.name }}</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- Add form -->
+  <section class="panel">
+    <h2>Add {{ 'Student' if is_tertiary else 'Learner' }}</h2>
+    <form method="post" action="{{ url_for('admin_manage_students', school_id=school.id) }}">
+      <input type="hidden" name="action" value="add">
+      <div class="form-row">
+        <div class="field">
+          <label>Full Name *</label>
+          <input type="text" name="name" required placeholder="e.g. Amara Dlamini">
+        </div>
+        <div class="field">
+          <label>Phone (optional)</label>
+          <input type="text" name="phone_number" placeholder="+268 ...">
+        </div>
+        {% if is_tertiary %}
+          <div class="field">
+            <label>Course</label>
+            <select name="course_id">
+              <option value="">— select course —</option>
+              {% for c in courses %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Year of Study</label>
+            <input type="number" name="year_of_study" min="1" max="8" placeholder="1">
+          </div>
+          <div class="field">
+            <label>Semester</label>
+            <select name="semester">
+              <option value="">—</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Enrolment Year</label>
+            <input type="number" name="year_of_enrollment" placeholder="2024" min="2000" max="2100">
+          </div>
+        {% else %}
+          <div class="field">
+            <label>Grade</label>
+            <input type="text" name="grade" placeholder="e.g. Grade 8">
+          </div>
+          <div class="field">
+            <label>Year of Study</label>
+            <input type="number" name="year_of_study" min="1" max="12" placeholder="1">
+          </div>
+        {% endif %}
+      </div>
+      <button type="submit" class="btn btn-primary">＋ Add {{ 'Student' if is_tertiary else 'Learner' }}</button>
+    </form>
+  </section>
+
+  <!-- List -->
+  <section class="panel">
+    <h2>Enrolled {{ 'Students' if is_tertiary else 'Learners' }} ({{ enrollees | length }})</h2>
+    {% if enrollees %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          {% if is_tertiary %}<th>Year / Sem</th>{% else %}<th>Grade</th>{% endif %}
+          <th>Phone</th>
+          <th>Account</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrollees %}
+        <tr>
+          <td>{{ e.id }}</td>
+          <td><strong>{{ e.name }}</strong></td>
+          {% if is_tertiary %}
+            <td>Y{{ e.year_of_study or '?' }} · S{{ e.semester or '?' }}</td>
+          {% else %}
+            <td>{{ e.grade or '—' }}</td>
+          {% endif %}
+          <td>{{ e.phone_number or '—' }}</td>
+          <td>
+            {% if e.user_id %}
+              <span class="badge badge-green">Has account</span>
+            {% else %}
+              <span class="badge badge-gray">No account</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="{{ url_for('admin_manage_students', school_id=school.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ e.name }}? This cannot be undone.');">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="record_id" value="{{ e.id }}">
+              <button class="btn btn-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty">No {{ 'students' if is_tertiary else 'learners' }} registered yet. Use the form above to add them.</div>
+    {% endif %}
+  </section>
+
+</main>
+</body>
+</html>

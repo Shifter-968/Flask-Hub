@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modules | {{ school.name }}</title>
+  <style>body{font-family:"Space Grotesk","Segoe UI",sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:24px}.wrap{max-width:1100px;margin:0 auto;display:grid;gap:16px}.panel{background:#111827;border:1px solid #334155;border-radius:12px;padding:16px}input,button,textarea{padding:10px;border-radius:8px;border:1px solid #334155;background:#1f2937;color:#e2e8f0}textarea{min-height:80px}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #334155;text-align:left}.row{display:flex;gap:8px;flex-wrap:wrap}.btn{cursor:pointer;background:#0ea5e9;border-color:#0ea5e9;color:#fff}.danger{background:#ef4444;border-color:#ef4444}a{color:#67e8f9}</style>
+</head>
+<body>
+<main class="wrap">
+  <a href="{{ url_for('school_admin_dashboard', school_id=school_id) }}">Back to Admin Dashboard</a>
+  <h1>Manage Modules - {{ school.name }}</h1>
+
+  <section class="panel">
+    <h2>Add Module</h2>
+    <form method="post" class="row">
+      <input type="hidden" name="action" value="add">
+      <input type="text" name="name" placeholder="Module name" required>
+      <input type="text" name="module_code" placeholder="Module code" required>
+      <input type="number" name="credits" placeholder="Credits">
+      <input type="text" name="faculty" placeholder="Faculty">
+      <textarea name="description" placeholder="Description"></textarea>
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Existing Modules</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Code</th><th>Credits</th><th>Faculty</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for module in modules %}
+        <tr>
+          <td>{{ module.id }}</td>
+          <td>{{ module.name }}</td>
+          <td>{{ module.module_code }}</td>
+          <td>{{ module.credits }}</td>
+          <td>{{ module.faculty }}</td>
+          <td>
+            <form method="post" class="row" style="margin-bottom:8px;">
+              <input type="hidden" name="action" value="edit">
+              <input type="hidden" name="module_id" value="{{ module.id }}">
+              <input type="text" name="name" value="{{ module.name }}" required>
+              <input type="text" name="module_code" value="{{ module.module_code }}" required>
+              <input type="number" name="credits" value="{{ module.credits }}">
+              <input type="text" name="faculty" value="{{ module.faculty }}">
+              <input type="text" name="description" value="{{ module.description }}">
+              <button class="btn" type="submit">Save</button>
+            </form>
+            <form method="post" onsubmit="return confirm('Delete this module?');">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="module_id" value="{{ module.id }}">
+              <button class="danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6">No modules found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>

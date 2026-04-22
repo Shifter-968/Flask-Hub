@@ -1,0 +1,462 @@
+{% extends "base_dashboard.html" %}
+{% set title = student_name ~ " – Performance" %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .breadcrumb {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        font-size: 0.86rem; color: #94a3b8; margin-bottom: 18px;
+    }
+    .breadcrumb a { color: #3b82f6; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    .student-header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 20px; margin-bottom: 28px; flex-wrap: wrap;
+    }
+    .student-header-left { display: flex; align-items: center; gap: 18px; }
+    .big-avatar {
+        width: 62px; height: 62px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 1.6rem;
+        flex-shrink: 0;
+    }
+    .student-header-name { font-size: 1.6rem; font-weight: 700; color: #1e293b; margin: 0 0 4px; }
+    .student-header-meta { color: #64748b; font-size: 0.88rem; }
+
+    /* GPA Summary Bar */
+    .gpa-bar {
+        display: flex; gap: 20px; flex-wrap: wrap;
+        background: white; border-radius: 16px; padding: 20px 24px;
+        box-shadow: 0 3px 16px rgba(30,41,59,0.07); border: 1px solid #e2e8f0;
+        margin-bottom: 28px;
+    }
+    .gpa-item { display: flex; flex-direction: column; gap: 4px; }
+    .gpa-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 600; }
+    .gpa-value { font-size: 1.45rem; font-weight: 700; color: #1e293b; }
+    .gpa-value.good { color: #16a34a; }
+    .gpa-value.ok { color: #d97706; }
+    .gpa-value.poor { color: #dc2626; }
+    .gpa-divider { width: 1px; background: #e2e8f0; align-self: stretch; margin: 0 4px; }
+
+    /* Add record button */
+    .btn-add-record {
+        padding: 10px 22px; border-radius: 11px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: white; font-weight: 700; font-size: 0.9rem;
+        border: none; cursor: pointer;
+        box-shadow: 0 4px 14px rgba(99,102,241,0.3);
+        transition: opacity 0.2s, transform 0.2s;
+        white-space: nowrap;
+    }
+    .btn-add-record:hover { opacity: 0.87; transform: translateY(-1px); }
+
+    /* Performance table */
+    .table-shell {
+        background: white; border-radius: 18px;
+        box-shadow: 0 4px 20px rgba(30,41,59,0.08);
+        border: 1px solid #e2e8f0;
+        overflow: hidden; margin-bottom: 20px;
+    }
+    .table-shell-header {
+        padding: 16px 22px; border-bottom: 1px solid #e2e8f0;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .type-label {
+        font-weight: 700; font-size: 0.95rem; color: #1e293b;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .type-icon { font-size: 1.1rem; }
+    .type-count { font-size: 0.78rem; font-weight: 600; color: #94a3b8; background: #f1f5f9; padding: 2px 8px; border-radius: 99px; }
+    .type-avg-chip {
+        font-size: 0.82rem; font-weight: 700; padding: 4px 12px; border-radius: 99px;
+        background: #eff6ff; color: #3b82f6;
+    }
+    .perf-table { width: 100%; border-collapse: collapse; }
+    .perf-table th {
+        padding: 10px 16px; text-align: left;
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;
+        color: #94a3b8; font-weight: 600;
+        background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+    }
+    .perf-table td {
+        padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem; color: #334155; vertical-align: top;
+    }
+    .perf-table tr:last-child td { border-bottom: none; }
+    .perf-table tr:hover td { background: #fafbff; }
+    .subject-chip {
+        display: inline-block; padding: 3px 10px; border-radius: 99px;
+        background: #f0fdf4; color: #15803d;
+        font-size: 0.78rem; font-weight: 600;
+    }
+    .score-cell { font-weight: 700; color: #1e293b; white-space: nowrap; }
+    .pct-badge {
+        display: inline-block; padding: 3px 9px; border-radius: 99px;
+        font-size: 0.8rem; font-weight: 700;
+    }
+    .pct-badge.A, .pct-badge.HD { background: #dcfce7; color: #16a34a; }
+    .pct-badge.B, .pct-badge.D  { background: #eff6ff; color: #2563eb; }
+    .pct-badge.C, .pct-badge.CR { background: #fef9c3; color: #ca8a04; }
+    .pct-badge.P                 { background: #fff7ed; color: #c2410c; }
+    .pct-badge.F                 { background: #fef2f2; color: #dc2626; }
+    .comment-cell { color: #64748b; font-style: italic; font-size: 0.84rem; }
+    .delete-btn {
+        background: none; border: none; cursor: pointer;
+        color: #fca5a5; font-size: 1rem; padding: 4px 6px;
+        border-radius: 6px; transition: background 0.18s, color 0.18s;
+        line-height: 1;
+    }
+    .delete-btn:hover { background: #fef2f2; color: #dc2626; }
+
+    .avg-row td {
+        background: #f8fafc; font-weight: 700; color: #475569;
+        font-size: 0.85rem; border-top: 2px solid #e2e8f0 !important;
+        border-bottom: none !important;
+        padding: 10px 16px;
+    }
+
+    .no-records-row td { text-align: center; color: #94a3b8; padding: 30px; font-size: 0.9rem; }
+
+    /* Modal */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(15,23,42,0.6); backdrop-filter: blur(5px);
+        z-index: 8000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 22px;
+        padding: 34px 30px 28px;
+        width: min(520px, 95vw);
+        box-shadow: 0 28px 75px rgba(15,23,42,0.22);
+        position: relative; max-height: 92vh; overflow-y: auto;
+    }
+    .modal-close {
+        position: absolute; top: 16px; right: 16px;
+        background: #f1f5f9; border: none; border-radius: 50%;
+        width: 34px; height: 34px; cursor: pointer; font-size: 1.1rem;
+        display: flex; align-items: center; justify-content: center;
+        color: #64748b; transition: background 0.2s;
+    }
+    .modal-close:hover { background: #e2e8f0; }
+    .modal-title { font-size: 1.2rem; font-weight: 700; color: #1e293b; margin: 0 0 22px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-group label { font-weight: 600; font-size: 0.8rem; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input, .form-group select, .form-group textarea {
+        padding: 9px 12px; border-radius: 9px; border: 1.5px solid #e2e8f0;
+        font-size: 0.9rem; color: #1e293b; background: #f8fafc;
+        transition: border-color 0.2s, background 0.2s; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none; border-color: #4f46e5; background: white;
+    }
+    .form-group textarea { resize: vertical; min-height: 76px; }
+    .hint-text { font-size: 0.76rem; color: #94a3b8; margin-top: 3px; }
+    .btn-submit-modal {
+        width: 100%; padding: 13px; border-radius: 11px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: white; font-weight: 700; font-size: 0.95rem;
+        border: none; cursor: pointer; margin-top: 6px;
+        transition: opacity 0.2s; font-family: inherit;
+    }
+    .btn-submit-modal:hover { opacity: 0.87; }
+
+    /* Type icons map */
+</style>
+
+<div class="breadcrumb">
+    <a href="{{ url_for('portal_dashboard', school_id=school_id) }}">📊 Portal</a>
+    <span>›</span>
+    <a href="{{ url_for('portal_assignments', school_id=school_id) }}">Assignment Performance</a>
+    <span>›</span>
+    <a href="{{ url_for('portal_classroom_students', school_id=school_id, classroom_id=classroom_id) }}">
+        {{ classroom.name if classroom else 'Classroom' }}
+    </a>
+    <span>›</span>
+    <span>{{ student_name }}</span>
+</div>
+
+<!-- Student header -->
+<div class="student-header">
+    <div class="student-header-left">
+        <div class="big-avatar">{{ student_name[0].upper() if student_name else '?' }}</div>
+        <div>
+            <div class="student-header-name">{{ student_name }}</div>
+            <div class="student-header-meta">
+                {{ classroom.name if classroom else '' }}
+                &nbsp;&bull;&nbsp; {{ student_type|title }}
+                {% if student_info.get('course') %}&nbsp;&bull;&nbsp; {{ student_info.course }}{% endif %}
+                {% if student_info.get('grade') %}&nbsp;&bull;&nbsp; Grade {{ student_info.grade }}{% endif %}
+            </div>
+        </div>
+    </div>
+    <button class="btn-add-record" onclick="openModal()">+ Add Performance Record</button>
+</div>
+
+<!-- GPA Summary Bar -->
+<div class="gpa-bar">
+    <div class="gpa-item">
+        <span class="gpa-label">Total Entries</span>
+        <span class="gpa-value">{{ records | length }}</span>
+    </div>
+    {% if records %}
+    <div class="gpa-divider"></div>
+    <div class="gpa-item">
+        <span class="gpa-label">Overall Average</span>
+        <span class="gpa-value {% if overall_pct >= 70 %}good{% elif overall_pct >= 50 %}ok{% else %}poor{% endif %}">
+            {{ overall_pct }}%
+        </span>
+    </div>
+    <div class="gpa-divider"></div>
+    <div class="gpa-item">
+        <span class="gpa-label">Symbol</span>
+        <span class="gpa-value {% if overall_symbol in ['A','HD'] %}good{% elif overall_symbol in ['B','D','C','CR'] %}ok{% else %}poor{% endif %}">
+            {{ overall_symbol }}
+        </span>
+    </div>
+    <div class="gpa-divider"></div>
+    <div class="gpa-item">
+        <span class="gpa-label">GPA</span>
+        <span class="gpa-value {% if gpa >= 3.0 %}good{% elif gpa >= 2.0 %}ok{% else %}poor{% endif %}">
+            {{ gpa }}
+        </span>
+    </div>
+    <div class="gpa-divider"></div>
+    <div class="gpa-item">
+        <span class="gpa-label">CGPA</span>
+        <span class="gpa-value {% if cgpa >= 3.0 %}good{% elif cgpa >= 2.0 %}ok{% else %}poor{% endif %}">
+            {{ cgpa }}
+        </span>
+    </div>
+    {% if is_tertiary %}
+    <div class="gpa-item" style="margin-left:4px;">
+        <span class="gpa-label">Scale</span>
+        <span style="font-size:0.75rem;color:#64748b;line-height:1.6;margin-top:4px;">
+            HD ≥75%&nbsp; D ≥65%&nbsp; CR ≥55%&nbsp; P ≥45%&nbsp; F &lt;45%
+        </span>
+    </div>
+    {% else %}
+    <div class="gpa-item" style="margin-left:4px;">
+        <span class="gpa-label">Scale</span>
+        <span style="font-size:0.75rem;color:#64748b;line-height:1.6;margin-top:4px;">
+            A ≥80%&nbsp; B ≥70%&nbsp; C ≥60%&nbsp; D ≥50%&nbsp; F &lt;50%
+        </span>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+    {% if cycle_options %}
+    <form method="GET" style="margin:0 0 16px;display:flex;gap:10px;align-items:center;">
+        <label style="font-weight:700;color:#334155;font-size:0.86rem;">Cycle:</label>
+        <select name="cycle" onchange="this.form.submit()" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;">
+            {% for opt in cycle_options %}
+            <option value="{{ opt.key }}" {% if opt.key == selected_cycle %}selected{% endif %}>{{ opt.label }} · {{ opt.year }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+
+<!-- Performance Tables grouped by type -->
+{% set type_icons = {'test': '📋', 'project': '🧩', 'exam': '🎓'} %}
+{% set type_labels = {'test': 'Tests', 'project': 'Projects', 'exam': 'Exams'} %}
+
+{% set ordered_types = ['test', 'project', 'exam'] %}
+{% for atype in ordered_types %}
+{% if grouped.get(atype) %}
+{% set type_records = grouped[atype] %}
+{% set avg = type_averages.get(atype, 0) %}
+<div class="table-shell">
+    <div class="table-shell-header">
+        <div class="type-label">
+            <span class="type-icon">{{ type_icons.get(atype, '📌') }}</span>
+            {{ type_labels.get(atype, atype|title) }}
+            <span class="type-count">{{ type_records | length }} entr{{ 'y' if type_records|length == 1 else 'ies' }}</span>
+        </div>
+        <span class="type-avg-chip">Avg: {{ avg }}%</span>
+    </div>
+    <table class="perf-table">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Assignment</th>
+                <th>Score</th>
+                <th>%</th>
+                <th>Comment</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in type_records %}
+            {% set pct = r.percentage | float if r.percentage is not none else 0 %}
+            {% if is_tertiary %}
+                {% if pct >= 75 %}{% set sym = 'HD' %}
+                {% elif pct >= 65 %}{% set sym = 'D' %}
+                {% elif pct >= 55 %}{% set sym = 'CR' %}
+                {% elif pct >= 45 %}{% set sym = 'P' %}
+                {% else %}{% set sym = 'F' %}{% endif %}
+            {% else %}
+                {% if pct >= 80 %}{% set sym = 'A' %}
+                {% elif pct >= 70 %}{% set sym = 'B' %}
+                {% elif pct >= 60 %}{% set sym = 'C' %}
+                {% elif pct >= 50 %}{% set sym = 'D' %}
+                {% else %}{% set sym = 'F' %}{% endif %}
+            {% endif %}
+            <tr>
+                <td><span class="subject-chip">{{ r.subject_name }}</span></td>
+                <td class="score-cell" style="font-weight:600;color:#334155;">{{ r.assignment_name }}</td>
+                <td class="score-cell">
+                    {{ r.marks_scored | int if r.marks_scored == r.marks_scored | int else r.marks_scored }}
+                    / {{ r.total_marks | int if r.total_marks == r.total_marks | int else r.total_marks }}
+                </td>
+                <td>
+                    <span class="pct-badge {{ sym }}">{{ pct }}% ({{ sym }})</span>
+                </td>
+                <td class="comment-cell">{{ r.teacher_comment or '—' }}</td>
+                <td>
+                    <form method="POST"
+                          action="{{ url_for('delete_performance', record_id=r.id) }}"
+                          onsubmit="return confirm('Delete this record?')">
+                        <input type="hidden" name="school_id" value="{{ school_id }}">
+                        <input type="hidden" name="classroom_id" value="{{ classroom_id }}">
+                        <input type="hidden" name="student_id" value="{{ student_id }}">
+                        <input type="hidden" name="student_type" value="{{ student_type }}">
+                        <button type="submit" class="delete-btn" title="Delete record">🗑</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            <!-- Average row -->
+            <tr class="avg-row">
+                <td colspan="3" style="text-align:right;">Average for {{ type_labels.get(atype, atype|title) }}:</td>
+                <td colspan="3">{{ avg }}%</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not records %}
+<div style="text-align:center;padding:60px 20px;color:#94a3b8;background:white;border-radius:18px;border:1px dashed #e2e8f0;">
+    <div style="font-size:2.8rem;">📊</div>
+    <strong>No performance records yet</strong>
+    <p style="margin:10px 0 0;font-size:0.92rem;">Click <strong>+ Add Performance Record</strong> above to get started.</p>
+</div>
+{% endif %}
+
+<!-- Add Record Modal -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <div class="modal-title">📝 Add Performance Record – {{ student_name }}</div>
+
+        <form method="POST" action="{{ url_for('record_performance') }}">
+            <input type="hidden" name="school_id" value="{{ school_id }}">
+            <input type="hidden" name="classroom_id" value="{{ classroom_id }}">
+            <input type="hidden" name="student_id" value="{{ student_id }}">
+            <input type="hidden" name="student_type" value="{{ student_type }}">
+
+            <div class="form-group">
+                <label>Subject / Module</label>
+                <input type="text" name="subject_name"
+                       list="subjects-list"
+                       placeholder="Type or select a subject…"
+                       required autocomplete="off">
+                <input type="hidden" name="subject_ref_id" id="subjectRefId" value="">
+                <input type="hidden" name="subject_ref_type" id="subjectRefType" value="">
+                <datalist id="subjects-list">
+                    {% for s in subject_options %}
+                    <option value="{{ s.name }}" data-id="{{ s.id }}" data-kind="{{ s.kind }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label>Assignment Name</label>
+                <input type="text" name="assignment_name"
+                       placeholder="e.g. Science Test 2, Principles Exam" required>
+            </div>
+
+            <div class="form-group">
+                <label>Assignment Type</label>
+                <select name="assignment_type">
+                    <option value="test">Test</option>
+                    <option value="project">Project</option>
+                    <option value="exam">Exam</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Marks Scored</label>
+                    <input type="number" name="marks_scored" step="0.5" min="0"
+                           id="scored" oninput="calcPct()" placeholder="e.g. 42" required>
+                </div>
+                <div class="form-group">
+                    <label>Out of (Total)</label>
+                    <input type="number" name="total_marks" step="0.5" min="1" value="100"
+                           id="total" oninput="calcPct()" required>
+                    <span class="hint-text" id="pctPreview">% calculated automatically</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Comment <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+                <textarea name="teacher_comment"
+                          placeholder="Write a note about this result…"></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit-modal">Save Record</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('addModal').classList.add('open');
+}
+function closeModal() {
+    document.getElementById('addModal').classList.remove('open');
+}
+document.getElementById('addModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+function calcPct() {
+    var scored = parseFloat(document.getElementById('scored').value);
+    var total = parseFloat(document.getElementById('total').value);
+    var preview = document.getElementById('pctPreview');
+    if (!isNaN(scored) && !isNaN(total) && total > 0) {
+        var pct = Math.round((scored / total) * 1000) / 10;
+        preview.textContent = '= ' + pct + '%';
+        preview.style.color = pct >= 50 ? '#16a34a' : '#dc2626';
+    } else {
+        preview.textContent = '% calculated automatically';
+        preview.style.color = '';
+    }
+}
+
+document.querySelector('input[name="subject_name"]').addEventListener('input', function() {
+    var list = document.getElementById('subjects-list');
+    var refId = document.getElementById('subjectRefId');
+    var refType = document.getElementById('subjectRefType');
+    refId.value = '';
+    refType.value = '';
+    var value = this.value;
+    list.querySelectorAll('option').forEach(function(opt) {
+        if (opt.value === value) {
+            refId.value = opt.getAttribute('data-id') || '';
+            refType.value = opt.getAttribute('data-kind') || '';
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Classroom Results" %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .shell { display: grid; gap: 16px; }
+    .card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 8px 28px rgba(15,23,42,0.07);
+        padding: 20px;
+    }
+    .cycle-title { margin: 0 0 10px; color: #0f172a; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 9px; text-align: left; }
+    th { color: #64748b; font-size: 0.75rem; text-transform: uppercase; }
+    .subject { font-weight: 700; color: #0f172a; }
+</style>
+
+<div class="shell">
+    <section class="card">
+        <h2 style="margin:0 0 8px;color:#0f172a;">{{ classroom.name if classroom else 'Classroom' }}</h2>
+        <p style="margin:0;color:#64748b;">Your test, project, and exam results grouped by term/semester.</p>
+    </section>
+
+    {% if not marks_enabled %}
+    <section class="card">
+        <p style="margin:0;color:#64748b;">Marks section is currently hidden by your school admin.</p>
+    </section>
+    {% elif cycle_order %}
+        {% for cycle_key in cycle_order %}
+        {% set cycle_parts = cycle_key.split('::') %}
+        <section class="card">
+            <h3 class="cycle-title">{{ cycle_parts[1] if cycle_parts|length > 1 else 'Cycle' }} · {{ cycle_parts[0] if cycle_parts else '' }}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject / Module</th>
+                        <th>Test</th>
+                        <th>Project</th>
+                        <th>Exam</th>
+                        <th>Average</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject, marks in matrix[cycle_key].items() %}
+                    {% set values = [marks.test, marks.project, marks.exam] | select('ne', none) | list %}
+                    <tr>
+                        <td class="subject">{{ subject }}</td>
+                        <td>{{ marks.test if marks.test is not none else '—' }}</td>
+                        <td>{{ marks.project if marks.project is not none else '—' }}</td>
+                        <td>{{ marks.exam if marks.exam is not none else '—' }}</td>
+                        <td>{{ (values | sum / values | length) | round(2) if values else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endfor %}
+    {% else %}
+    <section class="card">
+        <p style="margin:0;color:#64748b;">No records found for this classroom yet.</p>
+    </section>
+    {% endif %}
+
+    {% if marks_enabled %}
+    <section class="card">
+        <h3 style="margin:0 0 8px;color:#0f172a;">Performance Trend</h3>
+        <p style="margin:0 0 10px;color:#64748b;">Yearly fluctuation across tests, projects, and exams.</p>
+        <canvas id="trendChart" height="110"></canvas>
+    </section>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+var points = {{ chart_points|tojson }};
+var labels = points.map(function(p) {
+    return (p.date || '-') + ' ' + (p.type || '');
+});
+var data = points.map(function(p) { return p.percentage || 0; });
+var ctx = document.getElementById('trendChart');
+if (ctx && points.length > 0) {
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Score %',
+                data: data,
+                borderColor: '#0ea5e9',
+                backgroundColor: 'rgba(14,165,233,0.18)',
+                fill: true,
+                tension: 0.25,
+                pointRadius: 3,
+            }]
+        },
+        options: {
+            scales: { y: { min: 0, max: 100 } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+</script>
+{% endblock %}

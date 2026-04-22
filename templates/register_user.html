@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | Smart School Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+        :root {
+            --bg-a: #0d1122;
+            --bg-b: #141b34;
+            --glass: rgba(13, 20, 39, 0.8);
+            --line: rgba(255, 255, 255, 0.2);
+            --text: #f0f5ff;
+            --muted: #bcc8e3;
+            --accent-1: #67e8c7;
+            --accent-2: #89b4ff;
+            --focus: #67e8c7;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1000px 420px at 5% 0%, rgba(103, 232, 199, 0.18), transparent 60%),
+                radial-gradient(1000px 520px at 100% 100%, rgba(137, 180, 255, 0.22), transparent 55%),
+                linear-gradient(155deg, var(--bg-a), var(--bg-b));
+        }
+
+        .scene {
+            min-height: 100vh;
+            padding: clamp(12px, 2vw, 28px);
+            display: grid;
+            place-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scene::before,
+        .scene::after {
+            content: "";
+            position: absolute;
+            width: 340px;
+            height: 340px;
+            border-radius: 50%;
+            filter: blur(14px);
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .scene::before {
+            top: -100px;
+            left: -70px;
+            background: radial-gradient(circle, rgba(103, 232, 199, 0.58), transparent 66%);
+        }
+
+        .scene::after {
+            right: -90px;
+            bottom: -110px;
+            background: radial-gradient(circle, rgba(137, 180, 255, 0.6), transparent 64%);
+        }
+
+        .backdrop-content {
+            width: min(980px, 95vw);
+            padding: clamp(16px, 3vw, 30px);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            filter: blur(3px) saturate(0.92);
+            opacity: 0.48;
+            transform: scale(0.98);
+        }
+
+        .backdrop-content h1 {
+            margin: 0;
+            font-size: clamp(1.65rem, 4.8vw, 3rem);
+        }
+
+        .backdrop-content p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            max-width: 62ch;
+            line-height: 1.65;
+        }
+
+        .modal-wrap {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: clamp(12px, 2vw, 24px);
+            backdrop-filter: blur(8px);
+            background: rgba(4, 8, 16, 0.4);
+            z-index: 30;
+        }
+
+        .modal-card {
+            width: min(560px, 96vw);
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            background: var(--glass);
+            box-shadow: 0 30px 70px rgba(2, 7, 17, 0.55);
+            padding: clamp(16px, 3vw, 26px);
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            animation: popIn 280ms ease-out;
+        }
+
+        .modal-card::before,
+        .modal-card::after {
+            content: "";
+            position: absolute;
+            top: 14px;
+            bottom: 14px;
+            width: 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: linear-gradient(180deg, rgba(103, 232, 199, 0.22), rgba(137, 180, 255, 0.08));
+            z-index: -1;
+        }
+
+        .modal-card::before { left: -9px; }
+        .modal-card::after { right: -9px; }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(14px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .head h2 {
+            margin: 0;
+            font-size: clamp(1.35rem, 3.5vw, 2rem);
+        }
+
+        .close-link {
+            text-decoration: none;
+            color: var(--muted);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 10px;
+            padding: 6px 10px;
+            font-size: 0.9rem;
+        }
+
+        .sub {
+            margin: 0 0 12px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .flash {
+            border: 1px solid rgba(255, 164, 164, 0.45);
+            background: rgba(255, 164, 164, 0.12);
+            color: #ffdcdc;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 0.93rem;
+        }
+
+        form {
+            display: grid;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #dbe4f9;
+        }
+
+        input,
+        select {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            padding: 11px 12px;
+            outline: none;
+        }
+
+        select option {
+            color: #0f172a;
+            background: #ffffff;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--focus);
+            box-shadow: 0 0 0 3px rgba(103, 232, 199, 0.16);
+        }
+
+        .btn {
+            margin-top: 4px;
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-weight: 700;
+            color: #0b1d26;
+            background: linear-gradient(130deg, var(--accent-1), var(--accent-2));
+            cursor: pointer;
+        }
+
+        .foot {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <main class="scene">
+        <section class="backdrop-content" aria-hidden="true">
+            <h1>{{ school.name if school else 'Smart School Hub' }}</h1>
+            <p>Role-aware onboarding is active for {{ school_type_label }}. The registration options below are now locked to this school type only.</p>
+        </section>
+
+        <section class="modal-wrap" aria-modal="true" role="dialog" aria-labelledby="register-title">
+            <article class="modal-card">
+                <div class="head">
+                    <h2 id="register-title">User Registration</h2>
+                    <a class="close-link" href="{{ url_for('school_page', school_id=school_id, page_slug='home') if school_id else url_for('home') }}">Close</a>
+                </div>
+
+                <p class="sub">Registering for {{ school.name if school else 'this school' }} ({{ school_type_label }}).</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="post">
+                    <input type="hidden" name="user_id" value="{{ user_id }}">
+                    <input type="hidden" name="school_id" value="{{ school_id }}">
+
+                    <label for="username">Username</label>
+                    <input id="username" type="text" name="username" required>
+
+                    <label for="email">Email</label>
+                    <input id="email" type="email" name="email" required>
+
+                    <label for="password">Password</label>
+                    <input id="password" type="password" name="password" required>
+
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="" selected disabled>Select Role</option>
+                        {% for role in allowed_roles %}
+                        <option value="{{ role.value }}">{{ role.label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button class="btn" type="submit">Continue Registration</button>
+                </form>
+
+                <p class="foot">After this step, a role-specific detail form will pop in next, based on your selected role.</p>
+            </article>
+        </section>
+    </main>
+<script src="{{ url_for('static', filename='js/form_enhancements.js') }}"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Events | {{ school.name if school else 'School' }}</title>
+    <style>
+        :root {
+            --bg-a: #0d1122;
+            --bg-b: #141b34;
+            --glass: rgba(13, 20, 39, 0.8);
+            --line: rgba(255, 255, 255, 0.2);
+            --text: #f0f5ff;
+            --muted: #bcc8e3;
+            --accent-1: #67e8c7;
+            --accent-2: #89b4ff;
+            --focus: #67e8c7;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1000px 420px at 5% 0%, rgba(103, 232, 199, 0.18), transparent 60%),
+                radial-gradient(1000px 520px at 100% 100%, rgba(137, 180, 255, 0.22), transparent 55%),
+                linear-gradient(155deg, var(--bg-a), var(--bg-b));
+        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+        .back { display: inline-block; margin-bottom: 20px; color: var(--accent-1); text-decoration: none; font-size: 0.95rem; }
+        .back:hover { text-decoration: underline; }
+        h1 { font-size: 2rem; margin: 0 0 8px; }
+        .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 24px; }
+        .flash-message {
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 164, 164, 0.45);
+            background: rgba(255, 164, 164, 0.12);
+            color: #ffdcdc;
+        }
+        .flash-message.success {
+            border-color: rgba(103, 232, 199, 0.45);
+            background: rgba(103, 232, 199, 0.12);
+            color: #c4f9e8;
+        }
+        .panel {
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: var(--glass);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .form-group { display: grid; gap: 8px; margin-bottom: 16px; }
+        label { font-size: 0.9rem; color: #dbe4f9; font-weight: 600; }
+        input, textarea {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            padding: 11px 12px;
+            outline: none;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(103, 232, 199, 0.16); }
+        textarea { resize: vertical; min-height: 80px; }
+        .btn {
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 700;
+            color: #0b1d26;
+            background: linear-gradient(130deg, var(--accent-1), var(--accent-2));
+            cursor: pointer;
+            display: inline-block;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(103, 232, 199, 0.3); }
+        .btn-danger {
+            background: linear-gradient(130deg, #ff6b6b, #ff8e8e);
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .event-item {
+            border: 1px solid rgba(103, 232, 199, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .event-item h3 { margin: 0 0 8px; color: var(--accent-1); }
+        .event-item .date { display: inline-block; background: rgba(103, 232, 199, 0.2); padding: 4px 12px; border-radius: 20px; color: var(--accent-1); font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
+        .event-item p { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+        .event-item .description { color: #dbe4f9; line-height: 1.5; margin-bottom: 12px; }
+        .event-item .actions { display: flex; gap: 8px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a class="back" href="{{ url_for('school_admin_dashboard', school_id=school.id) }}">← Back to Admin Dashboard</a>
+        <h1>🎉 Manage Events</h1>
+        <p class="sub">Create and manage school events for {{ school.name if school else 'your school' }}.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Create New Event -->
+        <div class="panel">
+            <h2 style="margin-top: 0;">Create New Event</h2>
+            <form method="post" action="{{ url_for('admin_manage_events', school_id=school.id) }}">
+                <input type="hidden" name="action" value="add">
+                
+                <div class="form-group">
+                    <label for="title">Event Title *</label>
+                    <input id="title" type="text" name="title" placeholder="e.g., Sports Day 2026" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="event_date">Event Date *</label>
+                    <input id="event_date" type="date" name="event_date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" placeholder="Add event details, location, time, etc."></textarea>
+                </div>
+
+                <button class="btn" type="submit">Create Event</button>
+            </form>
+        </div>
+
+        <!-- Events List -->
+        <div class="panel">
+            <h2 style="margin-top: 0;">Upcoming & Past Events</h2>
+            {% if events %}
+                {% for event in events %}
+                    <div class="event-item">
+                        <h3>{{ event.title }}</h3>
+                        <div class="date">📅 {{ event.event_date if event.event_date else 'TBA' }}</div>
+                        <p><small>Created by {{ event.created_by or 'Admin' }}</small></p>
+                        {% if event.description %}
+                            <div class="description">{{ event.description }}</div>
+                        {% endif %}
+                        <div class="actions">
+                            <form method="post" action="{{ url_for('admin_manage_events', school_id=school.id) }}" style="display: inline;">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="event_id" value="{{ event.id }}">
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this event?');">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align: center; color: var(--muted); padding: 40px 0;">No events yet. Create one to get started!</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

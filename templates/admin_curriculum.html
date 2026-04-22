@@ -1,0 +1,111 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Curriculum Mapping{% endblock %}
+{% block header %}Curriculum Mapping{% endblock %}
+
+{% block content %}
+  <h2>Curriculum Mapping</h2>
+  <form method="post" action="{{ url_for('admin_curriculum') }}">
+      <label>Select School:</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}">{{ school.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Select Course:</label>
+      <select name="course_id" required>
+        {% for course in courses %}
+          <option value="{{ course.id }}">{{ course.name }} ({{ course.code }})</option>
+        {% endfor %}
+      </select>
+
+      <label>Year:</label>
+      <input type="number" name="year" required>
+
+      <label>Semester:</label>
+      <input type="number" name="semester" required>
+
+      <label>Select Module:</label>
+      <select name="module_id" required>
+        {% for module in modules %}
+          <option value="{{ module.id }}">{{ module.name }} ({{ module.module_code }})</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit">Map Module</button>
+  </form>
+
+  <h3>Existing Curriculum Mappings</h3>
+  <table>
+    <tr><th>School</th><th>Course</th><th>Year</th><th>Semester</th><th>Module</th><th>Actions</th></tr>
+    {% for mapping in mappings %}
+      <tr>
+        <td>{{ mapping.school_id }}</td>
+        <td>
+          {% for course in courses %}
+            {% if course.id == mapping.course_id %}
+              {{ course.name }} ({{ course.code }})
+            {% endif %}
+          {% endfor %}
+        </td>
+        <td>{{ mapping.year }}</td>
+        <td>{{ mapping.semester }}</td>
+        <td>
+          {% for module in modules %}
+            {% if module.id == mapping.module_id %}
+              {{ module.name }} ({{ module.module_code }})
+            {% endif %}
+          {% endfor %}
+        </td>
+        <td class="actions">
+          <a href="#edit-mapping-{{ mapping.id }}">Edit</a>
+          <a href="{{ url_for('delete_mapping', mapping_id=mapping.id) }}">Delete</a>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">No mappings found.</td></tr>
+    {% endfor %}
+  </table>
+
+  <!-- Inline Edit Forms -->
+  {% for mapping in mappings %}
+  <form id="edit-mapping-{{ mapping.id }}" method="POST" action="{{ url_for('edit_mapping', mapping_id=mapping.id) }}">
+      <h3>Edit Mapping</h3>
+      <label>Select School:</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}" {% if school.id == mapping.school_id %}selected{% endif %}>{{ school.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Select Course:</label>
+      <select name="course_id" required>
+        {% for course in courses %}
+          <option value="{{ course.id }}" {% if course.id == mapping.course_id %}selected{% endif %}>
+            {{ course.name }} ({{ course.code }})
+          </option>
+        {% endfor %}
+      </select>
+
+      <label>Year:</label>
+      <input type="number" name="year" value="{{ mapping.year }}" required>
+
+      <label>Semester:</label>
+      <input type="number" name="semester" value="{{ mapping.semester }}" required>
+
+      <label>Select Module:</label>
+      <select name="module_id" required>
+        {% for module in modules %}
+          <option value="{{ module.id }}" {% if module.id == mapping.module_id %}selected{% endif %}>
+            {{ module.name }} ({{ module.module_code }})
+          </option>
+        {% endfor %}
+      </select>
+
+      <button type="submit">Update Mapping</button>
+  </form>
+  {% endfor %}
+{% endblock %}

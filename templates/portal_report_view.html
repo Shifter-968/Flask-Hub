@@ -1,0 +1,57 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Report View" %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .sheet {
+        max-width: 920px;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 12px 35px rgba(15,23,42,0.08);
+        padding: 24px;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+    th { font-size: 0.75rem; text-transform: uppercase; color: #64748b; }
+</style>
+
+<div class="sheet">
+    <h2 style="margin:0;color:#0f172a;">Academic Report</h2>
+    <p style="margin:8px 0 0;color:#475569;">
+        <strong>Cycle:</strong> {{ report_doc.term_label or 'Cycle' }}
+        · <strong>Year:</strong> {{ report_doc.academic_year or 'Year' }}
+        · <strong>Overall:</strong> {{ report_doc.overall_percentage or 0 }}%
+    </p>
+    {% if report_doc.teacher_comment %}
+    <p style="margin:8px 0 0;color:#64748b;"><strong>Comment:</strong> {{ report_doc.teacher_comment }}</p>
+    {% endif %}
+
+    {% if report_doc.report_rows %}
+    <table>
+        <thead>
+            <tr>
+                <th>Subject / Module</th>
+                <th>Percentage</th>
+                <th>Symbol</th>
+                <th>Comment</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in report_doc.report_rows %}
+            <tr>
+                <td>{{ row.subject_name or '-' }}</td>
+                <td>{{ row.percentage or 0 }}%</td>
+                <td>{{ row.symbol or '-' }}</td>
+                <td>{{ row.comment or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="margin-top:14px;color:#94a3b8;">No detailed rows were saved for this report.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Assessment Performance – Select Classroom" %}
+{% set role = session.role|title if session.role else "User" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .breadcrumb {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 0.86rem; color: #94a3b8; margin-bottom: 18px;
+    }
+    .breadcrumb a { color: #3b82f6; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .page-title { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+    .page-sub { color: #64748b; margin: 0 0 30px; }
+
+    .portal-classroom-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 18px;
+    }
+    .p-classroom-card {
+        background: white;
+        border-radius: 18px;
+        padding: 24px 22px 20px;
+        box-shadow: 0 4px 20px rgba(30,41,59,0.08);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .p-classroom-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #6366f1);
+    }
+    .p-classroom-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 38px rgba(30,41,59,0.13);
+    }
+    .p-classroom-icon {
+        width: 42px; height: 42px;
+        background: linear-gradient(135deg, #eff6ff, #e0e7ff);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem;
+    }
+    .p-classroom-name { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+    .p-classroom-code { font-size: 0.82rem; color: #94a3b8; font-family: monospace; }
+    .p-classroom-cta {
+        display: inline-flex; align-items: center; gap: 5px;
+        color: #4f46e5; font-weight: 600; font-size: 0.85rem;
+        margin-top: 6px;
+    }
+    .no-data-state {
+        text-align: center; padding: 60px 20px; color: #94a3b8;
+        background: white; border-radius: 18px; border: 1px dashed #e2e8f0;
+    }
+    .no-data-state p { margin: 10px 0 0; font-size: 0.92rem; }
+</style>
+
+<div class="breadcrumb">
+    <a href="{{ url_for('portal_dashboard', school_id=school_id) }}">📊 Portal</a>
+    <span>›</span>
+    <span>Assessment Performance</span>
+</div>
+
+<div class="page-title">📝 Assessment Performance</div>
+<p class="page-sub">
+    Select a classroom to view and record tests, projects, and exams.
+    {% if cycle_meta %} Active cycle: <strong>{{ cycle_meta.cycle_label }} {{ cycle_meta.academic_year }}</strong>.{% endif %}
+</p>
+
+{% if classrooms %}
+<div class="portal-classroom-grid">
+    {% for c in classrooms %}
+    <a href="{{ url_for('portal_classroom_students', school_id=school_id, classroom_id=c.id) }}"
+       class="p-classroom-card">
+        <div class="p-classroom-icon">🏫</div>
+        <div class="p-classroom-name">{{ c.name }}</div>
+        {% if c.get('class_code') or c.get('code') or c.get('join_code') %}
+        <div class="p-classroom-code">{{ c.get('join_code') or c.get('class_code') or c.get('code') }}</div>
+        {% endif %}
+        <div class="p-classroom-cta">View Students →</div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-data-state">
+    <div style="font-size:2.8rem;">🏫</div>
+    <strong>No classrooms found</strong>
+    <p>Create a classroom first, then come back to record student performance.</p>
+</div>
+{% endif %}
+{% endblock %}
