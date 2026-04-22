@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Google Sign-Up | Smart School Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive_theme.css') }}">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: #f0f5ff;
+            background: radial-gradient(900px 450px at 10% 0%, rgba(62, 192, 157, 0.2), transparent 60%),
+                        linear-gradient(150deg, #0c1326, #121b35);
+        }
+        .card {
+            width: min(580px, 94vw);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 18px;
+            background: rgba(10, 18, 34, 0.88);
+            padding: 20px;
+        }
+        h1 { margin: 0 0 8px; font-size: 1.6rem; }
+        p { margin: 0 0 14px; color: #bac7e6; line-height: 1.6; }
+        .flash {
+            border: 1px solid rgba(255, 164, 164, 0.45);
+            background: rgba(255, 164, 164, 0.12);
+            color: #ffdcdc;
+            border-radius: 10px;
+            padding: 9px 11px;
+            margin-bottom: 10px;
+            font-size: 0.92rem;
+        }
+        form { display: grid; gap: 10px; }
+        label { font-size: 0.9rem; color: #dce6ff; }
+        input, select {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            padding: 10px 12px;
+        }
+        select option { color: #111827; }
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 12px;
+            font-weight: 700;
+            color: #0a1a2b;
+            background: linear-gradient(130deg, #67e8c7, #89b4ff);
+            cursor: pointer;
+        }
+        a { color: #9de7ff; }
+    </style>
+</head>
+<body>
+    <section class="card">
+        <h1>Finish Google Sign-Up</h1>
+        <p>Google account: <strong>{{ google_claims.email }}</strong>{% if google_claims.name %} ({{ google_claims.name }}){% endif %}</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('google_complete_signup') }}">
+            <label for="username">Username</label>
+            <input id="username" name="username" required>
+
+            <label for="school_id">School</label>
+            <select id="school_id" name="school_id" required>
+                <option value="" selected disabled>Select School</option>
+                {% for school in schools %}
+                <option value="{{ school.id }}">{{ school.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="role">Role</label>
+            <select id="role" name="role" required>
+                <option value="" selected disabled>Select Role</option>
+            </select>
+
+            <button type="submit">Continue Registration</button>
+        </form>
+
+        <p><a href="{{ url_for('login') }}">Back to Login</a></p>
+    </section>
+
+    <script>
+        (function () {
+            var roleSelect = document.getElementById('role');
+            var schoolSelect = document.getElementById('school_id');
+            var roleMap = {{ school_role_map|tojson }};
+
+            function repopulateRoles() {
+                if (!roleSelect || !schoolSelect) return;
+                var schoolId = schoolSelect.value;
+                var options = roleMap[schoolId] || [];
+                roleSelect.innerHTML = '<option value="" selected disabled>Select Role</option>';
+                options.forEach(function (entry) {
+                    var op = document.createElement('option');
+                    op.value = entry.value;
+                    op.textContent = entry.label;
+                    roleSelect.appendChild(op);
+                });
+            }
+
+            schoolSelect.addEventListener('change', repopulateRoles);
+        })();
+    </script>
+</body>
+</html>

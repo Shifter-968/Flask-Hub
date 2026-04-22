@@ -248,6 +248,48 @@
             font-size: 0.92rem;
         }
 
+        .auth-links {
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+
+        .auth-links a {
+            color: #9de7ff;
+            text-decoration: none;
+        }
+
+        .divider {
+            margin: 14px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            border-top: 1px solid rgba(255, 255, 255, 0.22);
+        }
+
+        .google-wrap {
+            margin-top: 6px;
+        }
+
+        .google-fallback {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
         .form-foot a {
             color: #9de7ff;
             text-decoration: none;
@@ -281,7 +323,7 @@
             <article class="login-card">
                 <div class="login-head">
                     <h2 id="login-title">Login</h2>
-                    <a class="close-link" href="{{ url_for('home') }}">Close</a>
+                    <a class="close-link" href="{{ url_for('school_page', school_id=school.id, page_slug='home') if school else url_for('home') }}">Close</a>
                 </div>
                 <p class="login-sub">
                     {% if school %}
@@ -327,12 +369,37 @@
                     <button class="btn" type="submit">Login</button>
                 </form>
 
+                <div class="auth-links">
+                    <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+                </div>
+
+                {% if google_client_id %}
+                    <div class="divider">Or continue with</div>
+                    <div class="google-wrap">
+                        <div id="g_id_onload"
+                             data-client_id="{{ google_client_id }}"
+                             data-callback="handleGoogleCredential"
+                             data-auto_prompt="false"></div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-shape="rectangular"
+                             data-theme="filled_black"
+                             data-text="continue_with"
+                             data-size="large"
+                             data-logo_alignment="left"></div>
+                    </div>
+                    <p class="google-fallback">Google sign-in can create a new account and continue to role setup if your email is new.</p>
+                {% endif %}
+
                 <p class="form-foot">
                     Need an account? Use your school registration page.
                 </p>
             </article>
         </div>
     </main>
+    {% if google_client_id %}
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
     <script>
         (function () {
             var passwordInput = document.getElementById('password');
@@ -353,6 +420,35 @@
                 eyeClosed.style.display = showing ? 'none' : 'block';
             });
         })();
+
+        async function handleGoogleCredential(response) {
+            if (!response || !response.credential) {
+                return;
+            }
+            try {
+                var payload = {
+                    credential: response.credential,
+                    school_id: {{ school_id|tojson }},
+                };
+                var apiResponse = await fetch('{{ url_for('google_token_login') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                var data = await apiResponse.json();
+                if (!apiResponse.ok) {
+                    alert(data.error || 'Google sign-in failed.');
+                    return;
+                }
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                    return;
+                }
+                alert('Google sign-in did not return a redirect URL.');
+            } catch (error) {
+                alert('Network error during Google sign-in.');
+            }
+        }
     </script>
 </body>
 </html>

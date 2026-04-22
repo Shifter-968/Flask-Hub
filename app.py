@@ -1,4 +1,5 @@
 from imports import *
+from datetime import timedelta
 import supabase
 from supabase import create_client
 from dotenv import load_dotenv
@@ -12,6 +13,7 @@ import hashlib
 from email.message import EmailMessage
 from urllib import request as urllib_request
 from urllib import error as urllib_error
+from urllib import parse as urllib_parse
 try:
     import httpx as _httpx
     _httpx_available = True
@@ -199,6 +201,13 @@ TWILIO_ACCOUNT_SID = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip()
 TWILIO_AUTH_TOKEN = (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
 SMS_WEBHOOK_URL = (os.getenv("SMS_WEBHOOK_URL") or "").strip()
 SMS_WEBHOOK_TOKEN = (os.getenv("SMS_WEBHOOK_TOKEN") or "").strip()
+GOOGLE_CLIENT_ID = (os.getenv("GOOGLE_CLIENT_ID") or "").strip()
+try:
+    AUTH_CODE_TTL_MINUTES = int(
+        (os.getenv("AUTH_CODE_TTL_MINUTES") or "15").strip())
+except (TypeError, ValueError):
+    AUTH_CODE_TTL_MINUTES = 15
+AUTH_CODE_TTL_MINUTES = max(5, AUTH_CODE_TTL_MINUTES)
 
 
 def _notification_meta(meta):
@@ -1565,6 +1574,291 @@ def _find_user_identity_conflicts(email=None, username=None, exclude_user_id=Non
     return conflicts
 
 
+def _normalize_phone(value):
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    return digits
+
+
+def _mask_destination(channel, destination):
+    text = (destination or "").strip()
+    if not text:
+        return ""
+    if channel == "email" and "@" in text:
+        local, domain = text.split("@", 1)
+        local_mask = (local[:2] + "***") if len(local) > 2 else "***"
+        return f"{local_mask}@{domain}"
+    if channel == "phone":
+        digits = _normalize_phone(text)
+        if len(digits) <= 4:
+            return "***"
+        return f"***{digits[-4:]}"
+    return "***"
+
+
+def _auth_code_hash(code):
+    raw = f"{app.secret_key}|{(code or '').strip()}".encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _auth_codes_table_missing(error):
+    message = str(error).lower()
+    return "auth_verification_codes" in message and (
+        "does not exist" in message or "relation" in message or "not found" in message
+    )
+
+
+def _store_auth_verification_code(user_id, purpose, channel, destination, code):
+    expires_at = (datetime.utcnow() +
+                  timedelta(minutes=AUTH_CODE_TTL_MINUTES)).isoformat()
+    payload = {
+        "user_id": int(user_id),
+        "purpose": (purpose or "").strip(),
+        "channel": (channel or "").strip(),
+        "destination": (destination or "").strip(),
+        "code_hash": _auth_code_hash(code),
+        "expires_at": expires_at,
+        "consumed_at": None,
+    }
+    return supabase.table("auth_verification_codes").insert(payload).execute()
+
+
+def _parse_iso_datetime(value):
+    text = (value or "").strip()
+    if not text:
+        return None
+    parsed = None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except Exception:
+        try:
+            parsed = datetime.fromisoformat(text)
+        except Exception:
+            parsed = None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is not None:
+        return parsed.replace(tzinfo=None)
+    return parsed
+
+
+def _latest_auth_verification_code(user_id, purpose, channel):
+    try:
+        rows = (
+            supabase.table("auth_verification_codes")
+            .select("id,code_hash,expires_at,consumed_at")
+            .eq("user_id", int(user_id))
+            .eq("purpose", (purpose or "").strip())
+            .eq("channel", (channel or "").strip())
+            .order("id", desc=True)
+            .limit(8)
+            .execute()
+            .data or []
+        )
+    except Exception:
+        return None
+
+    now_utc = datetime.utcnow()
+    for row in rows:
+        if row.get("consumed_at"):
+            continue
+        expires_at = _parse_iso_datetime(row.get("expires_at"))
+        if not expires_at or expires_at < now_utc:
+            continue
+        return row
+    return None
+
+
+def _consume_auth_verification_code(code_id):
+    if code_id is None:
+        return
+    try:
+        supabase.table("auth_verification_codes").update({
+            "consumed_at": datetime.utcnow().isoformat()}).eq("id", int(code_id)).execute()
+    except Exception:
+        pass
+
+
+def _lookup_user_by_channel(identifier, channel):
+    channel = (channel or "").strip().lower()
+    token = (identifier or "").strip()
+    if not token:
+        return None, None
+
+    if channel == "email":
+        normalized_email = token.lower()
+        try:
+            rows = (
+                supabase.table("users")
+                .select("id,email,username,role")
+                .eq("email", normalized_email)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            return (rows[0], normalized_email) if rows else (None, None)
+        except Exception:
+            return None, None
+
+    normalized_phone = _normalize_phone(token)
+    if not normalized_phone:
+        return None, None
+
+    table_candidates = [
+        "teachers", "lecturers", "students", "learners", "staff", "school_admins", "parents"
+    ]
+    for table_name in table_candidates:
+        try:
+            rows = (
+                supabase.table(table_name)
+                .select("user_id,phone_number")
+                .limit(1000)
+                .execute()
+                .data
+                or []
+            )
+        except Exception:
+            continue
+        for row in rows:
+            candidate_phone = _normalize_phone(row.get("phone_number"))
+            if candidate_phone and candidate_phone == normalized_phone and row.get("user_id"):
+                try:
+                    user_rows = (
+                        supabase.table("users")
+                        .select("id,email,username,role")
+                        .eq("id", int(row.get("user_id")))
+                        .limit(1)
+                        .execute()
+                        .data
+                        or []
+                    )
+                    if user_rows:
+                        return user_rows[0], token
+                except Exception:
+                    continue
+    return None, None
+
+
+def _resolve_post_auth_redirect(user, requested_school_id=None, requested_school=None):
+    user_role = _normalize_role((user or {}).get("role"))
+    if not user_role:
+        return {"ok": False, "error": "Unknown role"}
+
+    if user_role == "admin":
+        if requested_school_id is not None:
+            return {
+                "ok": False,
+                "error": "Platform admins must use the general login, not a school-specific login page.",
+            }
+        session.clear()
+        session["user_id"] = user.get("id")
+        session["role"] = "admin"
+        session["username"] = user.get("username")
+        session["user_email"] = user.get("email")
+        session["admin_logged_in"] = True
+        return {"ok": True, "redirect_url": url_for("admin_dashboard")}
+
+    session.clear()
+    session["user_id"] = user.get("id")
+    session["role"] = user_role
+    session["username"] = user.get("username")
+    session["user_email"] = user.get("email")
+
+    role_row = _load_role_profile_for_login(user_role, user.get("id"))
+    if not role_row:
+        return {"ok": False, "error": "No school linked to this account"}
+
+    school_id = role_row.get("school_id")
+    school = _get_school_record(school_id)
+    if requested_school_id is not None and school_id != requested_school_id:
+        scope_label = requested_school.get(
+            "name") if requested_school else "this school"
+        return {
+            "ok": False,
+            "error": f"There is no {user_role.replace('_', ' ')} account with those credentials for {scope_label}.",
+        }
+
+    if not _school_allows_role(school, user_role):
+        return {"ok": False, "error": "This account role is not allowed for the linked school type."}
+
+    session["school_id"] = school_id
+    session["school_type"] = school.get("school_type") if school else None
+    session["role"] = user_role
+    session["user_name"] = role_row.get("name")
+    if user_role == "teacher":
+        session["teacher_id"] = role_row.get("id")
+    elif user_role == "lecturer":
+        session["lecturer_id"] = role_row.get("id")
+    elif user_role == "school_admin":
+        session["school_admin_id"] = role_row.get("id")
+    elif user_role == "student":
+        session["student_id"] = role_row.get("id")
+    elif user_role == "learner":
+        session["learner_id"] = role_row.get("id")
+
+    dashboard_urls = {
+        "student": url_for("student_dashboard", school_id=school_id),
+        "learner": url_for("learner_dashboard", school_id=school_id),
+        "teacher": url_for("teacher_dashboard", school_id=school_id),
+        "lecturer": url_for("lecturer_dashboard", school_id=school_id),
+        "parent": url_for("parent_dashboard", school_id=school_id),
+        "staff": url_for("staff_dashboard", school_id=school_id),
+        "school_admin": url_for("school_admin_dashboard", school_id=school_id),
+    }
+    redirect_url = dashboard_urls.get(user_role)
+    if not redirect_url:
+        return {"ok": False, "error": "Unknown role"}
+
+    return {"ok": True, "redirect_url": redirect_url}
+
+
+def _verify_google_id_token(id_token):
+    if not GOOGLE_CLIENT_ID:
+        return None, "Google Sign-In is not configured."
+    token = (id_token or "").strip()
+    if not token:
+        return None, "Missing Google credential token."
+
+    tokeninfo_url = (
+        "https://oauth2.googleapis.com/tokeninfo?id_token="
+        + urllib_parse.quote(token)
+    )
+    try:
+        with urllib_request.urlopen(tokeninfo_url, timeout=10) as response:
+            payload = std_json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return None, "Google token verification failed."
+
+    if (payload.get("aud") or "").strip() != GOOGLE_CLIENT_ID:
+        return None, "Google token audience mismatch."
+    verified = str(payload.get("email_verified") or "").strip().lower()
+    if verified not in {"true", "1"}:
+        return None, "Google account email is not verified."
+    if not (payload.get("email") or "").strip():
+        return None, "Google account did not return an email."
+    return payload, None
+
+
+def _render_role_registration_step(role, user_id, school_id):
+    role = _normalize_role(role)
+    if role == "teacher":
+        return render_template("register_teacher.html", user_id=user_id, school_id=school_id)
+    if role == "student":
+        courses = _select_school_scoped(
+            "courses", school_id=_parse_int(school_id), order_by="name")
+        return render_template("register_student.html", user_id=user_id, school_id=school_id, courses=courses)
+    if role == "lecturer":
+        return render_template("register_lecturer.html", user_id=user_id, school_id=school_id)
+    if role == "learner":
+        return render_template("register_learner.html", user_id=user_id, school_id=school_id)
+    if role == "parent":
+        return render_template("register_parent.html", user_id=user_id, school_id=school_id)
+    if role == "staff":
+        return render_template("register_staff.html", user_id=user_id, school_id=school_id)
+    flash("Unknown role selected.", "error")
+    return redirect(url_for("register", school_id=school_id))
+
+
 def _availability_message(field_name, conflicting_user):
     if not conflicting_user:
         return f"{field_name.title()} is available."
@@ -2444,25 +2738,7 @@ def register(school_id):
         session["school_id"] = school_id
         session["role"] = role
         session["school_type"] = school.get("school_type")
-
-        # --------------------------------------------------------------------------Redirect based on role----------------------------
-        if role == "teacher":
-            return render_template("register_teacher.html", user_id=user_id, school_id=school_id)
-        elif role == "student":
-            courses = _select_school_scoped(
-                "courses", school_id=_parse_int(school_id), order_by="name")
-            return render_template("register_student.html", user_id=user_id, school_id=school_id, courses=courses)
-        elif role == "lecturer":
-            return render_template("register_lecturer.html", user_id=user_id, school_id=school_id)
-        elif role == "learner":
-            return render_template("register_learner.html", user_id=user_id, school_id=school_id)
-        elif role == "parent":
-            return render_template("register_parent.html", user_id=user_id, school_id=school_id)
-        elif role == "staff":
-            return render_template("register_staff.html", user_id=user_id, school_id=school_id)
-        else:
-            flash("Unknown role selected.", "error")
-            return redirect(url_for("register", school_id=school_id))
+        return _render_role_registration_step(role, user_id=user_id, school_id=school_id)
 
     return render_template(
         "register_user.html",
@@ -2847,92 +3123,263 @@ def login():
 
         # Verify password
         if check_password_hash(user["password"], password):
-            user_role = _normalize_role(user.get("role"))
-
-            # Global admin is intentionally not bound to a school.
-            if user_role == "admin":
-                if requested_school_id is not None:
-                    flash(
-                        "Platform admins must use the general login, not a school-specific login page.", "error")
-                    return redirect(url_for("login"))
-                session.clear()
-                session["user_id"] = user["id"]
-                session["role"] = "admin"
-                session["username"] = user.get("username")
-                session["user_email"] = user.get("email")
-                session["admin_logged_in"] = True
-                return redirect(url_for("admin_dashboard"))
-
-            # Store user info in session
-            session["user_id"] = user["id"]
-            session["role"] = user_role
-            session["username"] = user["username"]
-            session["user_email"] = user["email"]
-
-            role_row = _load_role_profile_for_login(user_role, user["id"])
-
-            if role_row:
-                school_id = role_row["school_id"]
-                school = _get_school_record(school_id)
-                if requested_school_id is not None and school_id != requested_school_id:
-                    scope_label = requested_school.get(
-                        "name") if requested_school else "this school"
-                    flash(
-                        f"There is no {user_role.replace('_', ' ')} account with those credentials for {scope_label}.",
-                        "error",
-                    )
-                    session.clear()
-                    return redirect(url_for("login", school_id=requested_school_id))
-
-                if not _school_allows_role(school, user_role):
-                    flash(
-                        "This account role is not allowed for the linked school type.", "error")
-                    session.clear()
-                    return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
-
-                session["school_id"] = school_id
-                session["school_type"] = school.get(
-                    "school_type") if school else None
-                session["role"] = user_role
-                session["user_name"] = role_row.get(
-                    "name")  # Store the actual name
-                if user_role == "teacher":
-                    session["teacher_id"] = role_row["id"]
-                elif user_role == "lecturer":
-                    session["lecturer_id"] = role_row["id"]
-                elif user_role == "school_admin":
-                    session["school_admin_id"] = role_row["id"]
-                elif user_role == "student":
-                    session["student_id"] = role_row["id"]
-                elif user_role == "learner":
-                    session["learner_id"] = role_row["id"]
-            else:
-                flash("No school linked to this account", "error")
-                return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
-
-            # -----------------------------------------------------------------------Redirect based on role
-            if user_role == "student":
-                return redirect(url_for("student_dashboard", school_id=school_id))
-            elif user_role == "learner":
-                return redirect(url_for("learner_dashboard", school_id=school_id))
-            elif user_role == "teacher":
-                return redirect(url_for("teacher_dashboard", school_id=school_id))
-            elif user_role == "lecturer":
-                return redirect(url_for("lecturer_dashboard", school_id=school_id))
-            elif user_role == "parent":
-                return redirect(url_for("parent_dashboard", school_id=school_id))
-            elif user_role == "staff":
-                return redirect(url_for("staff_dashboard", school_id=school_id))
-            elif user_role == "school_admin":
-                return redirect(url_for("school_admin_dashboard", school_id=school_id))
-            else:
-                flash("Unknown role", "error")
-                return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
+            auth_result = _resolve_post_auth_redirect(
+                user,
+                requested_school_id=requested_school_id,
+                requested_school=requested_school,
+            )
+            if auth_result.get("ok"):
+                return redirect(auth_result.get("redirect_url"))
+            flash(auth_result.get("error") or "Login failed.", "error")
+            return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
         else:
             flash("Invalid email or password", "error")
             return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
 
-    return render_template("login.html", school=requested_school, school_id=requested_school_id)
+    return render_template(
+        "login.html",
+        school=requested_school,
+        school_id=requested_school_id,
+        google_client_id=GOOGLE_CLIENT_ID,
+    )
+
+
+@app.route("/auth/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        method = (request.form.get("method") or "email").strip().lower()
+        identifier = (request.form.get("identifier") or "").strip()
+        if method not in {"email", "phone"}:
+            flash("Select email or phone for verification.", "error")
+            return redirect(url_for("forgot_password"))
+        if not identifier:
+            flash("Enter your email or phone number.", "error")
+            return redirect(url_for("forgot_password"))
+
+        user_row, destination = _lookup_user_by_channel(identifier, method)
+        # Avoid account enumeration in public responses.
+        generic_message = "If an account exists, a verification code has been sent."
+        if not user_row:
+            flash(generic_message, "success")
+            return redirect(url_for("reset_password_verify"))
+
+        code = f"{uuid.uuid4().int % 1000000:06d}"
+        try:
+            _store_auth_verification_code(
+                user_id=user_row.get("id"),
+                purpose="password_reset",
+                channel=method,
+                destination=destination,
+                code=code,
+            )
+        except Exception as error:
+            if _auth_codes_table_missing(error):
+                flash(
+                    "Auth verification schema is missing. Run schema_auth_security.sql in Supabase SQL Editor.", "error")
+            else:
+                flash("Could not issue verification code. Please try again.", "error")
+            return redirect(url_for("forgot_password"))
+
+        if method == "email":
+            sent, detail = _send_email_notification(
+                destination,
+                "Smart School Hub password reset code",
+                (
+                    "Use this verification code to reset your password: "
+                    f"{code}\n\n"
+                    f"The code expires in {AUTH_CODE_TTL_MINUTES} minutes."
+                ),
+            )
+        else:
+            sent, detail = _send_sms_notification(
+                destination,
+                f"Smart School Hub reset code: {code}. Expires in {AUTH_CODE_TTL_MINUTES} minutes.",
+            )
+        if not sent:
+            flash(f"Verification send failed: {detail}", "error")
+            return redirect(url_for("forgot_password"))
+
+        session["password_reset_user_id"] = user_row.get("id")
+        session["password_reset_channel"] = method
+        session["password_reset_masked_destination"] = _mask_destination(
+            method, destination)
+        flash(generic_message, "success")
+        return redirect(url_for("reset_password_verify"))
+
+    return render_template("forgot_password.html", auth_code_ttl_minutes=AUTH_CODE_TTL_MINUTES)
+
+
+@app.route("/auth/reset-password/verify", methods=["GET", "POST"])
+def reset_password_verify():
+    reset_user_id = _parse_int(session.get("password_reset_user_id"))
+    reset_channel = (session.get("password_reset_channel")
+                     or "").strip().lower()
+
+    if request.method == "POST":
+        if reset_user_id is None or reset_channel not in {"email", "phone"}:
+            flash("Reset session expired. Start password reset again.", "error")
+            return redirect(url_for("forgot_password"))
+
+        code = (request.form.get("verification_code") or "").strip()
+        new_password = request.form.get("new_password") or ""
+        confirm_password = request.form.get("confirm_password") or ""
+
+        if not code or not code.isdigit() or len(code) != 6:
+            flash("Enter the 6-digit verification code.", "error")
+            return redirect(url_for("reset_password_verify"))
+        password_error = _validate_password_strength(new_password)
+        if password_error:
+            flash(password_error, "error")
+            return redirect(url_for("reset_password_verify"))
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("reset_password_verify"))
+
+        latest_code = _latest_auth_verification_code(
+            user_id=reset_user_id,
+            purpose="password_reset",
+            channel=reset_channel,
+        )
+        if not latest_code or latest_code.get("code_hash") != _auth_code_hash(code):
+            flash("Invalid or expired verification code.", "error")
+            return redirect(url_for("reset_password_verify"))
+
+        try:
+            supabase.table("users").update({
+                "password": generate_password_hash(new_password)
+            }).eq("id", reset_user_id).execute()
+        except Exception:
+            flash("Could not reset password. Please try again.", "error")
+            return redirect(url_for("reset_password_verify"))
+
+        _consume_auth_verification_code(latest_code.get("id"))
+        session.pop("password_reset_user_id", None)
+        session.pop("password_reset_channel", None)
+        session.pop("password_reset_masked_destination", None)
+        flash("Password reset successful. You can now log in.", "success")
+        return redirect(url_for("login"))
+
+    return render_template(
+        "reset_password_verify.html",
+        masked_destination=session.get("password_reset_masked_destination"),
+        channel=reset_channel,
+        auth_code_ttl_minutes=AUTH_CODE_TTL_MINUTES,
+    )
+
+
+@app.route("/auth/google-token-login", methods=["POST"])
+def google_token_login():
+    try:
+        payload = request.get_json(force=True) or {}
+    except Exception:
+        payload = {}
+
+    requested_school_id = _parse_int(payload.get("school_id"))
+    requested_school = _get_school_record(
+        requested_school_id) if requested_school_id is not None else None
+    claims, error_message = _verify_google_id_token(payload.get("credential"))
+    if error_message:
+        return jsonify({"error": error_message}), 400
+
+    email = (claims.get("email") or "").strip().lower()
+    user_rows = supabase.table("users").select(
+        "*").eq("email", email).limit(1).execute().data or []
+
+    if not user_rows:
+        session["google_signup_claims"] = {
+            "email": email,
+            "name": (claims.get("name") or "").strip(),
+            "sub": (claims.get("sub") or "").strip(),
+        }
+        return jsonify({"ok": True, "need_signup": True, "redirect": url_for("google_complete_signup")})
+
+    auth_result = _resolve_post_auth_redirect(
+        user_rows[0],
+        requested_school_id=requested_school_id,
+        requested_school=requested_school,
+    )
+    if not auth_result.get("ok"):
+        return jsonify({"error": auth_result.get("error") or "Google sign-in failed."}), 400
+    return jsonify({"ok": True, "redirect": auth_result.get("redirect_url")})
+
+
+@app.route("/auth/google/complete-signup", methods=["GET", "POST"])
+def google_complete_signup():
+    claims = session.get("google_signup_claims") or {}
+    if not claims.get("email"):
+        flash("Google sign-up session expired. Please sign in with Google again.", "error")
+        return redirect(url_for("login"))
+
+    schools = _safe_select_table(
+        "schools", "id,name,school_type", order_by="name")
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        role = _normalize_role(request.form.get("role"))
+        school_id = _parse_int(request.form.get("school_id"))
+        school = _get_school_record(
+            school_id) if school_id is not None else None
+
+        if not username or not role or not school:
+            flash("Username, role, and school are required.", "error")
+            return redirect(url_for("google_complete_signup"))
+        if role in {"admin", "school_admin"}:
+            flash("This signup path does not allow admin roles.", "error")
+            return redirect(url_for("google_complete_signup"))
+        if not _school_allows_role(school, role):
+            return _reject_disallowed_role(role, school)
+
+        conflicts = _find_user_identity_conflicts(
+            email=claims.get("email"), username=username)
+        if conflicts.get("email"):
+            flash(
+                "An account with this Google email already exists. Use login instead.", "error")
+            return redirect(url_for("login"))
+        if conflicts.get("username"):
+            flash("Username is already taken. Choose another.", "error")
+            return redirect(url_for("google_complete_signup"))
+
+        random_password_hash = generate_password_hash(uuid.uuid4().hex)
+        try:
+            response = supabase.table("users").insert({
+                "username": username,
+                "email": claims.get("email"),
+                "password": random_password_hash,
+                "role": role,
+            }).execute()
+        except Exception as error:
+            if _is_duplicate_user_identity_error(error):
+                flash(
+                    "Registration failed because this account identity already exists.", "error")
+            else:
+                flash("Google sign-up failed. Please try again.", "error")
+            return redirect(url_for("google_complete_signup"))
+
+        if not getattr(response, "data", None):
+            flash("Google sign-up failed. Please try again.", "error")
+            return redirect(url_for("google_complete_signup"))
+
+        user_id = response.data[0].get("id")
+        session["google_signup_claims"] = None
+        session["user_id"] = user_id
+        session["school_id"] = school_id
+        session["role"] = role
+        session["school_type"] = school.get("school_type")
+        session["username"] = username
+        session["user_email"] = claims.get("email")
+        return _render_role_registration_step(role, user_id=user_id, school_id=school_id)
+
+    school_role_map = {}
+    for school in schools:
+        school_role_map[school.get("id")] = _role_options_for_school_type(
+            school.get("school_type"))
+
+    return render_template(
+        "google_complete_signup.html",
+        google_claims=claims,
+        schools=schools,
+        school_role_map=school_role_map,
+    )
 
 
 @app.route("/school/<int:school_id>/admin")
@@ -5201,7 +5648,8 @@ def ai_instructor_virtual_call_summary():
     if _virtual_call_status(call_payload) != "ended":
         return jsonify({"error": "Session notes can only be generated for ended meetings."}), 400
 
-    attendance = _virtual_call_attendance_snapshot(classroom_id, [call_post_id])
+    attendance = _virtual_call_attendance_snapshot(
+        classroom_id, [call_post_id])
     metrics = attendance.get(str(call_post_id), {})
 
     summary_text = ""
@@ -5239,7 +5687,8 @@ def ai_instructor_virtual_call_summary():
             response = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "You summarize classroom meetings for educators."},
+                    {"role": "system",
+                        "content": "You summarize classroom meetings for educators."},
                     {"role": "user", "content": prompt},
                 ],
                 response_format={"type": "json_object"},
