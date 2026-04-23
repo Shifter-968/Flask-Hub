@@ -14,6 +14,7 @@ from email.message import EmailMessage
 from urllib import request as urllib_request
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
+from itsdangerous import URLSafeSerializer, BadSignature
 try:
     import httpx as _httpx
     _httpx_available = True
@@ -34,6 +35,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallbacksecret")
+SCHOOL_LINK_TOKEN_SALT = "school-link-v1"
 
 
 def _wants_json_response():
@@ -371,6 +373,21 @@ def _send_sms_notification(to_number, message):
             return False, str(error)[:300]
 
     return False, "No SMS provider configured"
+
+
+def _friendly_verification_delivery_error(channel, detail):
+    detail_text = (detail or "").strip().lower()
+    if channel == "email":
+        if "application-specific password" in detail_text or "5.7.9" in detail_text:
+            return "Email provider blocked login. Set SMTP_PASSWORD to a Gmail App Password (not your normal password), then redeploy."
+        if "authentication" in detail_text or "535" in detail_text:
+            return "Email authentication failed. Check SMTP_USERNAME and SMTP_PASSWORD in Render environment variables."
+        if "smtp config missing" in detail_text:
+            return "Email is not configured yet. Add SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM_EMAIL, and SMTP_USE_TLS in Render."
+    if channel == "phone":
+        if "twilio config missing" in detail_text or "no sms provider configured" in detail_text:
+            return "Phone verification is not configured yet. Set SMS_PROVIDER and SMS credentials in Render."
+    return "Verification send failed. Check provider configuration and try again."
 
 
 def notify_user(user_id, title, message, notification_type="general", priority="normal", send_email=True, send_sms=False, meta=None):
@@ -1257,6 +1274,106 @@ def _parse_int(value):
         return int(text)
     except (TypeError, ValueError):
         return None
+
+
+def _school_link_serializer():
+    return URLSafeSerializer(app.secret_key, salt=SCHOOL_LINK_TOKEN_SALT)
+
+
+def _encode_school_ref(school_id):
+    school_id_int = _parse_int(school_id)
+    if school_id_int is None:
+        return None
+    return _school_link_serializer().dumps({"school_id": school_id_int})
+
+
+def _decode_school_ref(school_ref):
+    school_id_int = _parse_int(school_ref)
+    if school_id_int is not None:
+        return school_id_int
+
+    token = (school_ref or "").strip()
+    if not token:
+        return None
+    try:
+        payload = _school_link_serializer().loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return _parse_int(payload.get("school_id"))
+
+
+def _school_login_url(school_id=None):
+    school_id_int = _parse_int(school_id)
+    if school_id_int is None:
+        return url_for("login")
+    school_ref = _encode_school_ref(school_id_int)
+    if not school_ref:
+        return url_for("login")
+    return url_for("login", school_ref=school_ref)
+
+
+def _school_public_url(school_id, page_slug="home"):
+    school_id_int = _parse_int(school_id)
+    if school_id_int is None:
+        return url_for("home")
+    return url_for("school_page", school_id=school_id_int, page_slug=page_slug)
+
+
+@app.context_processor
+def inject_school_link_helpers():
+    return {
+        "school_login_url": _school_login_url,
+        "school_public_url": _school_public_url,
+        "school_ref_token": _encode_school_ref,
+    }
+
+
+def _current_school_dashboard_url():
+    role = _normalize_role(session.get("role"))
+    school_id = _parse_int(session.get("school_id"))
+    if role == "admin":
+        return url_for("admin_dashboard")
+    if school_id is None:
+        return url_for("login")
+
+    route_map = {
+        "student": "student_dashboard",
+        "learner": "learner_dashboard",
+        "teacher": "teacher_dashboard",
+        "lecturer": "lecturer_dashboard",
+        "parent": "parent_dashboard",
+        "staff": "staff_dashboard",
+        "school_admin": "school_admin_dashboard",
+    }
+    endpoint = route_map.get(role)
+    if not endpoint:
+        return url_for("login")
+    return url_for(endpoint, school_id=school_id)
+
+
+def _require_authenticated_school_context(school_id, allowed_roles=None):
+    if not session.get("user_id"):
+        flash("Please log in first.", "error")
+        return redirect(url_for("login"))
+
+    if _is_global_admin_session():
+        return None
+
+    current_role = _normalize_role(session.get("role"))
+    if allowed_roles:
+        normalized_roles = {_normalize_role(role) for role in allowed_roles}
+        if current_role not in normalized_roles:
+            flash("Access denied for this user role.", "error")
+            return redirect(_current_school_dashboard_url())
+
+    current_school_id = _parse_int(session.get("school_id"))
+    requested_school_id = _parse_int(school_id)
+    if current_school_id is None or requested_school_id is None or current_school_id != requested_school_id:
+        flash("Access denied for this school context.", "error")
+        return redirect(_current_school_dashboard_url())
+    return None
 
 
 def _parse_iso_date(value):
@@ -3100,13 +3217,19 @@ def success():
 
 
 @app.route("/login", methods=["GET", "POST"])
-def login():
-    requested_school_id = _parse_int(
-        request.form.get(
-            "school_id") if request.method == "POST" else request.args.get("school_id")
-    )
+@app.route("/login/<school_ref>", methods=["GET", "POST"])
+def login(school_ref=None):
+    if request.method == "POST":
+        requested_scope = request.form.get(
+            "school_ref") or request.form.get("school_id")
+    else:
+        requested_scope = school_ref or request.args.get(
+            "school_ref") or request.args.get("school_id")
+
+    requested_school_id = _decode_school_ref(requested_scope)
     requested_school = _get_school_record(
         requested_school_id) if requested_school_id is not None else None
+    requested_school_ref = _encode_school_ref(requested_school_id)
 
     if request.method == "POST":
         email = (request.form["email"] or "").strip().lower()
@@ -3117,7 +3240,7 @@ def login():
             "*").eq("email", email).execute()
         if not response.data:
             flash("Invalid email or password", "error")
-            return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
+            return redirect(_school_login_url(requested_school_id))
 
         user = response.data[0]
 
@@ -3131,15 +3254,16 @@ def login():
             if auth_result.get("ok"):
                 return redirect(auth_result.get("redirect_url"))
             flash(auth_result.get("error") or "Login failed.", "error")
-            return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
+            return redirect(_school_login_url(requested_school_id))
         else:
             flash("Invalid email or password", "error")
-            return redirect(url_for("login", school_id=requested_school_id) if requested_school_id else url_for("login"))
+            return redirect(_school_login_url(requested_school_id))
 
     return render_template(
         "login.html",
         school=requested_school,
         school_id=requested_school_id,
+        school_ref=requested_school_ref,
         google_client_id=GOOGLE_CLIENT_ID,
     )
 
@@ -3196,7 +3320,9 @@ def forgot_password():
                 f"Smart School Hub reset code: {code}. Expires in {AUTH_CODE_TTL_MINUTES} minutes.",
             )
         if not sent:
-            flash(f"Verification send failed: {detail}", "error")
+            app.logger.warning(
+                "Verification delivery failed (%s): %s", method, detail)
+            flash(_friendly_verification_delivery_error(method, detail), "error")
             return redirect(url_for("forgot_password"))
 
         session["password_reset_user_id"] = user_row.get("id")
@@ -3274,7 +3400,9 @@ def google_token_login():
     except Exception:
         payload = {}
 
-    requested_school_id = _parse_int(payload.get("school_id"))
+    requested_school_id = _decode_school_ref(
+        payload.get("school_ref") or payload.get("school_id")
+    )
     requested_school = _get_school_record(
         requested_school_id) if requested_school_id is not None else None
     claims, error_message = _verify_google_id_token(payload.get("credential"))
@@ -3915,14 +4043,45 @@ def admin_update_portal_settings(school_id):
     reports_open = (request.form.get("portal_reports_open")
                     or "").strip() in {"1", "true", "on", "yes"}
 
+    desired_values = {
+        "portal_marks_open": marks_open,
+        "portal_reports_open": reports_open,
+    }
+
     try:
-        supabase.table("schools").update({
-            "portal_marks_open": marks_open,
-            "portal_reports_open": reports_open,
-        }).eq("id", school_id).execute()
+        supabase.table("schools").update(
+            desired_values).eq("id", school_id).execute()
         flash("Portal section settings updated.", "success")
     except Exception as e:
-        flash(f"Could not update portal settings: {str(e)[:120]}", "error")
+        if _is_missing_school_column_error(e):
+            updated_columns = []
+            for column_name, column_value in desired_values.items():
+                try:
+                    supabase.table("schools").update(
+                        {column_name: column_value}
+                    ).eq("id", school_id).execute()
+                    updated_columns.append(column_name)
+                except Exception as single_error:
+                    if not _is_missing_school_column_error(single_error):
+                        app.logger.warning(
+                            "Portal settings update failed for school %s (%s): %s",
+                            school_id,
+                            column_name,
+                            single_error,
+                        )
+
+            if updated_columns:
+                flash(
+                    "Portal settings were partially updated. Run schema_portal_results.sql to enable all toggles.",
+                    "warning",
+                )
+            else:
+                flash(
+                    "Portal settings columns are missing in the schools table. Run schema_portal_results.sql, then try again.",
+                    "error",
+                )
+        else:
+            flash(f"Could not update portal settings: {str(e)[:120]}", "error")
 
     return redirect(url_for("school_admin_dashboard", school_id=school_id))
 
@@ -4198,6 +4357,11 @@ def logout():
 # =========================================================================================LECTURER DASHBOARD=============
 @app.route("/lecturer/dashboard/<int:school_id>")
 def lecturer_dashboard(school_id):
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"lecturer"})
+    if gate:
+        return gate
+
     # Pull announcements for this school
     announcements = _load_active_announcements(school_id)
 
@@ -4222,6 +4386,11 @@ def lecturer_dashboard(school_id):
 
 @app.route("/student/dashboard/<int:school_id>")
 def student_dashboard(school_id):
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"student"})
+    if gate:
+        return gate
+
     # Pull announcements for this school
     announcements = _load_active_announcements(school_id)
 
@@ -4245,6 +4414,11 @@ def student_dashboard(school_id):
 # =============================================================================================LEARNER DASHBOARD==========
 @app.route("/learner/dashboard/<int:school_id>")
 def learner_dashboard(school_id):
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"learner"})
+    if gate:
+        return gate
+
     # Pull announcements for this school
     announcements = _load_active_announcements(school_id)
 
@@ -4269,6 +4443,11 @@ def learner_dashboard(school_id):
 
 @app.route("/teacher/dashboard/<int:school_id>")
 def teacher_dashboard(school_id):
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher"})
+    if gate:
+        return gate
+
     # Pull announcements for this school
     announcements = _load_active_announcements(school_id)
 
@@ -5739,6 +5918,11 @@ def ai_instructor_virtual_call_summary():
 
 @app.route("/parent/dashboard/<int:school_id>")
 def parent_dashboard(school_id):
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"parent"})
+    if gate:
+        return gate
+
     # Pull announcements for this school
     announcements = _load_active_announcements(school_id)
 
@@ -5762,6 +5946,11 @@ def parent_dashboard(school_id):
 # ===================================================================================================STAFF DASHBOARD+++++++++++
 @app.route("/staff/dashboard/<int:school_id>")
 def staff_dashboard(school_id):
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"staff"})
+    if gate:
+        return gate
+
     # Pull announcements for this school
     announcements = _load_active_announcements(school_id)
 
@@ -6486,9 +6675,11 @@ def symbol_to_gpa(symbol):
 
 @app.route("/portal/<int:school_id>")
 def portal_dashboard(school_id):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied. Teachers and lecturers only.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     school = get_school_record(school_id)
     cycle_meta = get_cycle_meta(school, actor_type)
@@ -6499,15 +6690,17 @@ def portal_dashboard(school_id):
 
 @app.route("/portal/<int:school_id>/assignments")
 def portal_assignments(school_id):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     actor_id = session.get("teacher_id") or session.get("lecturer_id")
     try:
         id_col = "teacher_id" if actor_type == "teacher" else "lecturer_id"
         classrooms = supabase.table("classrooms").select(
-            "*").eq(id_col, actor_id).execute().data or []
+            "*").eq(id_col, actor_id).eq("school_id", school_id).execute().data or []
     except Exception:
         classrooms = []
     school = get_school_record(school_id)
@@ -6519,9 +6712,11 @@ def portal_assignments(school_id):
 
 @app.route("/portal/<int:school_id>/assignments/<int:classroom_id>")
 def portal_classroom_students(school_id, classroom_id):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     try:
         classroom = supabase.table("classrooms").select(
@@ -6531,6 +6726,9 @@ def portal_classroom_students(school_id, classroom_id):
         classroom = None
     if not classroom:
         flash("Classroom not found.", "error")
+        return redirect(url_for("portal_assignments", school_id=school_id))
+    if _parse_int(classroom.get("school_id")) != int(school_id):
+        flash("Access denied for this classroom.", "error")
         return redirect(url_for("portal_assignments", school_id=school_id))
 
     students = []
@@ -6585,9 +6783,11 @@ def portal_student_subject_options():
 
 @app.route("/portal/<int:school_id>/assignments/<int:classroom_id>/student/<int:student_id>/<student_type>")
 def portal_student_performance(school_id, classroom_id, student_id, student_type):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     school = get_school_record(school_id)
     cycle_meta = get_cycle_meta(school, actor_type)
@@ -6599,6 +6799,9 @@ def portal_student_performance(school_id, classroom_id, student_id, student_type
         classroom = classroom[0] if classroom else None
     except Exception:
         classroom = None
+    if not classroom or _parse_int(classroom.get("school_id")) != int(school_id):
+        flash("Access denied for this classroom.", "error")
+        return redirect(url_for("portal_assignments", school_id=school_id))
 
     student_name = "Student"
     student_info = {}
@@ -6718,6 +6921,11 @@ def record_performance():
     student_id = int(request.form.get("student_id", 0))
     student_type = request.form.get("student_type", "student")
     school_id = int(request.form.get("school_id", 0))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     subject_name = request.form.get("subject_name", "").strip()
     assignment_name = request.form.get("assignment_name", "").strip()
     assignment_type = (request.form.get(
@@ -6799,6 +7007,11 @@ def delete_performance(record_id):
         flash("Access denied.", "error")
         return redirect(url_for("login"))
     school_id = int(request.form.get("school_id", 0))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     classroom_id = int(request.form.get("classroom_id", 0))
     student_id = int(request.form.get("student_id", 0))
     student_type = request.form.get("student_type", "student")
@@ -6817,15 +7030,17 @@ def delete_performance(record_id):
 
 @app.route("/portal/<int:school_id>/term_results")
 def portal_term_results(school_id):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     actor_id = session.get("teacher_id") or session.get("lecturer_id")
     try:
         id_col = "teacher_id" if actor_type == "teacher" else "lecturer_id"
         classrooms = supabase.table("classrooms").select(
-            "*").eq(id_col, actor_id).execute().data or []
+            "*").eq(id_col, actor_id).eq("school_id", school_id).execute().data or []
     except Exception:
         classrooms = []
     school = get_school_record(school_id)
@@ -6837,9 +7052,11 @@ def portal_term_results(school_id):
 
 @app.route("/portal/<int:school_id>/term_results/<int:classroom_id>")
 def portal_term_classroom(school_id, classroom_id):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     try:
         classroom = supabase.table("classrooms").select(
@@ -6847,6 +7064,9 @@ def portal_term_classroom(school_id, classroom_id):
         classroom = classroom[0] if classroom else None
     except Exception:
         classroom = None
+    if not classroom or _parse_int(classroom.get("school_id")) != int(school_id):
+        flash("Access denied for this classroom.", "error")
+        return redirect(url_for("portal_term_results", school_id=school_id))
 
     students = []
     seen = set()
@@ -6880,9 +7100,11 @@ def portal_term_classroom(school_id, classroom_id):
 
 @app.route("/portal/<int:school_id>/term_results/<int:classroom_id>/student/<int:student_id>/<student_type>", methods=["GET", "POST"])
 def portal_term_student(school_id, classroom_id, student_id, student_type):
-    if not session.get("teacher_id") and not session.get("lecturer_id"):
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"teacher", "lecturer"})
+    if gate:
+        return gate
+
     actor_type = "teacher" if session.get("teacher_id") else "lecturer"
     actor_id = session.get("teacher_id") or session.get("lecturer_id")
     school = get_school_record(school_id)
@@ -6898,6 +7120,9 @@ def portal_term_student(school_id, classroom_id, student_id, student_type):
         classroom = classroom[0] if classroom else None
     except Exception:
         classroom = None
+    if not classroom or _parse_int(classroom.get("school_id")) != int(school_id):
+        flash("Access denied for this classroom.", "error")
+        return redirect(url_for("portal_term_results", school_id=school_id))
 
     student_name = "Student"
     student_info = {}
@@ -7110,6 +7335,28 @@ def portal_report_view(report_id):
         flash("Report not found.", "error")
         return redirect(url_for("login"))
 
+    classroom_school_id = None
+    try:
+        classroom_rows = (
+            supabase.table("classrooms")
+            .select("school_id")
+            .eq("id", report_doc.get("classroom_id"))
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if classroom_rows:
+            classroom_school_id = _parse_int(
+                classroom_rows[0].get("school_id"))
+    except Exception:
+        classroom_school_id = None
+
+    session_school_id = _parse_int(session.get("school_id"))
+    if classroom_school_id is not None and session_school_id is not None and classroom_school_id != session_school_id:
+        flash("Access denied for this school context.", "error")
+        return redirect(_current_school_dashboard_url())
+
     # Learners and students can only read own reports.
     if session.get("role") in ["student", "learner"]:
         own_id = session.get("student_id") if session.get(
@@ -7124,9 +7371,10 @@ def portal_report_view(report_id):
 
 @app.route("/student-portal/<int:school_id>")
 def student_portal_dashboard(school_id):
-    if session.get("role") not in ["student", "learner"]:
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"student", "learner"})
+    if gate:
+        return gate
 
     student_type = session.get("role")
     student_id = session.get(
@@ -7178,9 +7426,10 @@ def student_portal_dashboard(school_id):
 
 @app.route("/student-portal/<int:school_id>/classroom/<int:classroom_id>")
 def student_portal_classroom(school_id, classroom_id):
-    if session.get("role") not in ["student", "learner"]:
-        flash("Access denied.", "error")
-        return redirect(url_for("login"))
+    gate = _require_authenticated_school_context(
+        school_id, allowed_roles={"student", "learner"})
+    if gate:
+        return gate
 
     student_type = session.get("role")
     student_id = session.get(
@@ -7198,6 +7447,9 @@ def student_portal_classroom(school_id, classroom_id):
         classroom = None
     if not classroom:
         flash("Classroom not found.", "error")
+        return redirect(url_for("student_portal_dashboard", school_id=school_id))
+    if _parse_int(classroom.get("school_id")) != int(school_id):
+        flash("Access denied for this classroom.", "error")
         return redirect(url_for("student_portal_dashboard", school_id=school_id))
 
     perf_rows = []

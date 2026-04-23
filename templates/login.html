@@ -323,7 +323,7 @@
             <article class="login-card">
                 <div class="login-head">
                     <h2 id="login-title">Login</h2>
-                    <a class="close-link" href="{{ url_for('school_page', school_id=school.id, page_slug='home') if school else url_for('home') }}">Close</a>
+                    <a class="close-link" href="{{ school_public_url(school.id, 'home') if school else url_for('home') }}">Close</a>
                 </div>
                 <p class="login-sub">
                     {% if school %}
@@ -342,8 +342,8 @@
                 {% endwith %}
 
                 <form method="post" action="{{ url_for('login') }}">
-                    {% if school_id %}
-                        <input type="hidden" name="school_id" value="{{ school_id }}">
+                    {% if school_ref %}
+                        <input type="hidden" name="school_ref" value="{{ school_ref }}">
                     {% endif %}
 
                     <label for="email">Email</label>
@@ -428,7 +428,7 @@
             try {
                 var payload = {
                     credential: response.credential,
-                    school_id: {{ school_id|tojson }},
+                    school_ref: {{ school_ref|tojson }},
                 };
                 var apiResponse = await fetch('{{ url_for('google_token_login') }}', {
                     method: 'POST',

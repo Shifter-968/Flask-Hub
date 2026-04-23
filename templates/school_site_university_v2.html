@@ -448,7 +448,7 @@
       <nav class="menu" id="school-site-menu-v2">
         <a href="{{ url_for('home') }}" class="hub-link">Back to Smart School Hub</a>
         <a href="{{ url_for('register', school_id=school.id) }}" class="auth-link">Create Account</a>
-        <a href="{{ url_for('login', school_id=school.id) }}" class="auth-link">Login</a>
+        <a href="{{ school_login_url(school.id) }}" class="auth-link">Login</a>
         {% for item in menu_items %}
           {% set label_lower = (item.label or '')|lower %}
           {% if item.is_external and item.external_url %}
