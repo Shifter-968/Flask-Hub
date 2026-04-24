@@ -1358,6 +1358,32 @@ def inject_school_link_helpers():
     }
 
 
+# ── School-ref URL converter ────────────────────────────────────────────────────
+# Encodes school IDs as itsdangerous signed tokens inside URL path segments so
+# that dashboard URLs look like /teacher/dashboard/eyJzY2...abc instead of
+# /teacher/dashboard/1.  Plain integer strings (legacy/bookmarked URLs) are
+# still accepted by to_python via _decode_school_ref's fallback.
+from werkzeug.routing import BaseConverter as _BaseConverter
+
+
+class _SchoolRefConverter(_BaseConverter):
+    regex = r"[^/]+"
+
+    def to_python(self, value):
+        result = _decode_school_ref(value)
+        if result is None:
+            raise ValueError(f"Invalid school ref: {value!r}")
+        return result
+
+    def to_url(self, value):
+        encoded = _encode_school_ref(value)
+        return encoded if encoded else str(value)
+
+
+app.url_map.converters["school_ref"] = _SchoolRefConverter
+# ───────────────────────────────────────────────────────────────────────────────
+
+
 def _current_school_dashboard_url():
     role = _normalize_role(session.get("role"))
     school_id = _parse_int(session.get("school_id"))
@@ -4383,7 +4409,7 @@ def logout():
 
 
 # =========================================================================================LECTURER DASHBOARD=============
-@app.route("/lecturer/dashboard/<int:school_id>")
+@app.route("/lecturer/dashboard/<school_ref:school_id>")
 def lecturer_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"lecturer"})
@@ -4404,7 +4430,8 @@ def lecturer_dashboard(school_id):
     # Pull virtual calls for all classrooms in this school
     dashboard_virtual_calls = _load_dashboard_virtual_calls(
         classrooms,
-        actor_id=str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or ""),
+        actor_id=str(session.get("user_id") or session.get(
+            "teacher_id") or session.get("lecturer_id") or ""),
     )
 
     return render_template(
@@ -4419,7 +4446,7 @@ def lecturer_dashboard(school_id):
 # ==========================================================================================STUDENT DASHBOARD=============
 
 
-@app.route("/student/dashboard/<int:school_id>")
+@app.route("/student/dashboard/<school_ref:school_id>")
 def student_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"student"})
@@ -4447,7 +4474,7 @@ def student_dashboard(school_id):
 
 
 # =============================================================================================LEARNER DASHBOARD==========
-@app.route("/learner/dashboard/<int:school_id>")
+@app.route("/learner/dashboard/<school_ref:school_id>")
 def learner_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"learner"})
@@ -4518,7 +4545,7 @@ def _load_dashboard_virtual_calls(classrooms, actor_id=""):
     return result
 
 
-@app.route("/teacher/dashboard/<int:school_id>")
+@app.route("/teacher/dashboard/<school_ref:school_id>")
 def teacher_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher"})
@@ -4539,7 +4566,8 @@ def teacher_dashboard(school_id):
     # Pull virtual calls for all classrooms in this school
     dashboard_virtual_calls = _load_dashboard_virtual_calls(
         classrooms,
-        actor_id=str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or ""),
+        actor_id=str(session.get("user_id") or session.get(
+            "teacher_id") or session.get("lecturer_id") or ""),
     )
 
     return render_template(
@@ -4553,17 +4581,20 @@ def teacher_dashboard(school_id):
     )
 
 
-@app.route("/virtual-meetings/<int:school_id>", methods=["GET", "POST"])
+@app.route("/virtual-meetings/<school_ref:school_id>", methods=["GET", "POST"])
 def global_virtual_meetings(school_id):
     gate = _require_authenticated_school_context(
         school_id,
-        allowed_roles={"teacher", "lecturer", "student", "learner", "parent", "staff", "school_admin"},
+        allowed_roles={"teacher", "lecturer", "student",
+                       "learner", "parent", "staff", "school_admin"},
     )
     if gate:
         return gate
 
-    actor_id = str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or "")
-    actor_name = session.get("user_name") or session.get("username") or (session.get("role") or "member").title()
+    actor_id = str(session.get("user_id") or session.get(
+        "teacher_id") or session.get("lecturer_id") or "")
+    actor_name = session.get("user_name") or session.get(
+        "username") or (session.get("role") or "member").title()
     actor_role = session.get("role") or "member"
 
     if request.method == "POST":
@@ -4572,8 +4603,10 @@ def global_virtual_meetings(school_id):
         if action == "create_global_virtual_meeting":
             title = (request.form.get("meeting_title") or "").strip()
             password = (request.form.get("meeting_password") or "").strip()
-            scheduled_start_raw = (request.form.get("meeting_scheduled_start") or "").strip()
-            scheduled_end_raw = (request.form.get("meeting_scheduled_end") or "").strip()
+            scheduled_start_raw = (request.form.get(
+                "meeting_scheduled_start") or "").strip()
+            scheduled_end_raw = (request.form.get(
+                "meeting_scheduled_end") or "").strip()
             if not title:
                 flash("Meeting title is required.", "error")
                 return redirect(url_for("global_virtual_meetings", school_id=school_id))
@@ -4605,18 +4638,24 @@ def global_virtual_meetings(school_id):
                 "ended_at": None,
             }
             try:
-                resp = supabase.table("global_virtual_meetings").insert(row).execute()
+                resp = supabase.table(
+                    "global_virtual_meetings").insert(row).execute()
                 created = resp.data[0] if resp and resp.data else None
-                created_id = created.get("id") if isinstance(created, dict) else None
+                created_id = created.get("id") if isinstance(
+                    created, dict) else None
                 if created_id:
-                    session[f"global_virtual_meeting_access_{created_id}"] = datetime.utcnow().isoformat()
-                flash(f"Global meeting created. Meeting code: {meeting_code}", "success")
+                    session[f"global_virtual_meeting_access_{created_id}"] = datetime.utcnow(
+                    ).isoformat()
+                flash(
+                    f"Global meeting created. Meeting code: {meeting_code}", "success")
             except Exception:
-                flash("Unable to create global meeting right now. Ensure global_virtual_meetings table exists.", "error")
+                flash(
+                    "Unable to create global meeting right now. Ensure global_virtual_meetings table exists.", "error")
             return redirect(url_for("global_virtual_meetings", school_id=school_id))
 
         if action == "join_global_virtual_meeting":
-            meeting_code = (request.form.get("meeting_code") or "").strip().upper()
+            meeting_code = (request.form.get(
+                "meeting_code") or "").strip().upper()
             password = (request.form.get("meeting_password") or "").strip()
             if not meeting_code:
                 flash("Meeting code is required.", "error")
@@ -4652,7 +4691,8 @@ def global_virtual_meetings(school_id):
                 return redirect(url_for("global_virtual_meetings", school_id=school_id))
 
             meeting_id = meeting.get("id")
-            session[f"global_virtual_meeting_access_{meeting_id}"] = datetime.utcnow().isoformat()
+            session[f"global_virtual_meeting_access_{meeting_id}"] = datetime.utcnow(
+            ).isoformat()
             return redirect(url_for("global_virtual_meeting_room", school_id=school_id, meeting_id=meeting_id))
 
         if action == "end_global_virtual_meeting":
@@ -4685,7 +4725,8 @@ def global_virtual_meetings(school_id):
 
         if action == "rotate_global_virtual_meeting_password":
             meeting_id = _parse_int(request.form.get("meeting_id"))
-            new_password = (request.form.get("new_meeting_password") or "").strip()
+            new_password = (request.form.get(
+                "new_meeting_password") or "").strip()
             if meeting_id is None:
                 flash("Invalid meeting.", "error")
                 return redirect(url_for("global_virtual_meetings", school_id=school_id))
@@ -4712,7 +4753,8 @@ def global_virtual_meetings(school_id):
                     "password_sealed": _seal_meeting_password(new_password),
                     "password_rotated_at": datetime.utcnow().isoformat(),
                 }).eq("id", meeting_id).eq("school_id", school_id).execute()
-                session[f"global_virtual_meeting_access_{meeting_id}"] = datetime.utcnow().isoformat()
+                session[f"global_virtual_meeting_access_{meeting_id}"] = datetime.utcnow(
+                ).isoformat()
                 flash("Meeting password updated.", "success")
             except Exception:
                 flash("Unable to update meeting password.", "error")
@@ -4729,11 +4771,12 @@ def global_virtual_meetings(school_id):
     )
 
 
-@app.route("/virtual-meetings/<int:school_id>/call/<int:meeting_id>")
+@app.route("/virtual-meetings/<school_ref:school_id>/call/<int:meeting_id>")
 def global_virtual_meeting_room(school_id, meeting_id):
     gate = _require_authenticated_school_context(
         school_id,
-        allowed_roles={"teacher", "lecturer", "student", "learner", "parent", "staff", "school_admin"},
+        allowed_roles={"teacher", "lecturer", "student",
+                       "learner", "parent", "staff", "school_admin"},
     )
     if gate:
         return gate
@@ -4752,7 +4795,8 @@ def global_virtual_meeting_room(school_id, meeting_id):
         flash("Meeting not found.", "error")
         return redirect(url_for("global_virtual_meetings", school_id=school_id))
 
-    actor_id = str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or "")
+    actor_id = str(session.get("user_id") or session.get(
+        "teacher_id") or session.get("lecturer_id") or "")
     host_id = str(meeting.get("created_by_id") or "")
     is_host = bool(host_id and actor_id and host_id == actor_id)
     call_status = _virtual_call_status({
@@ -4848,7 +4892,8 @@ def _load_global_virtual_meetings(school_id, actor_id=""):
         host_id = str(row.get("created_by_id") or "")
         meeting_id = row.get("id")
         is_host = bool(host_id and actor_key and host_id == actor_key)
-        has_access = bool(session.get(f"global_virtual_meeting_access_{meeting_id}"))
+        has_access = bool(session.get(
+            f"global_virtual_meeting_access_{meeting_id}"))
         if not (is_host or has_access):
             continue
         payload = {
@@ -5395,9 +5440,11 @@ def classroom_detail(classroom_id):
                 insert_resp = supabase.table("classroom_posts").insert(
                     post_payload).execute()
                 created_post = insert_resp.data[0] if insert_resp and insert_resp.data else None
-                created_post_id = created_post.get("id") if isinstance(created_post, dict) else None
+                created_post_id = created_post.get(
+                    "id") if isinstance(created_post, dict) else None
                 if created_post_id:
-                    session[f"virtual_call_access_{created_post_id}"] = datetime.utcnow().isoformat()
+                    session[f"virtual_call_access_{created_post_id}"] = datetime.utcnow(
+                    ).isoformat()
                 flash(
                     f"Virtual classroom call created. Meeting code: {meeting_code}. Share code + password with participants.", "success")
             except Exception:
@@ -5430,7 +5477,8 @@ def classroom_detail(classroom_id):
                     call_resp = supabase.table("classroom_posts").select(
                         "id,classroom_id,content,created_at,author_name").eq("classroom_id", classroom_id).eq("role", "virtual_call").order("created_at", desc=True).limit(300).execute()
                     for row in (call_resp.data or []):
-                        payload = _virtual_call_payload_decode(row.get("content"))
+                        payload = _virtual_call_payload_decode(
+                            row.get("content"))
                         if payload and (payload.get("meeting_code") or "").strip().upper() == call_code:
                             call_post = row
                             call_post_id = row.get("id")
@@ -5526,7 +5574,8 @@ def classroom_detail(classroom_id):
             payload["password_sealed"] = _seal_meeting_password(new_password)
             payload["password_rotated_at"] = datetime.utcnow().isoformat()
             if _virtual_call_update_post_payload(classroom_id, call_post_id, payload):
-                session[f"virtual_call_access_{call_post_id}"] = datetime.utcnow().isoformat()
+                session[f"virtual_call_access_{call_post_id}"] = datetime.utcnow(
+                ).isoformat()
                 flash("Call password updated.", "success")
             else:
                 flash("Unable to update call password.", "error")
@@ -5782,8 +5831,10 @@ def classroom_detail(classroom_id):
                 post_id = post.get("id")
                 created_by_id = str(call_payload.get("created_by_id") or "")
                 status = _virtual_call_status(call_payload)
-                is_host = bool(created_by_id and current_actor_id and created_by_id == current_actor_id)
-                has_access = bool(session.get(f"virtual_call_access_{post_id}"))
+                is_host = bool(
+                    created_by_id and current_actor_id and created_by_id == current_actor_id)
+                has_access = bool(session.get(
+                    f"virtual_call_access_{post_id}"))
                 if not (is_host or has_access):
                     continue
                 virtual_calls.append({
@@ -5977,7 +6028,8 @@ def classroom_virtual_call(classroom_id, call_post_id):
         call_title=call_payload.get("title") or "Virtual Classroom Call",
         room_name=call_payload.get("room_name"),
         meeting_code=(call_payload.get("meeting_code") or "").strip(),
-        creator_password=_reveal_meeting_password(call_payload.get("password_sealed") or "") if is_host else "",
+        creator_password=_reveal_meeting_password(
+            call_payload.get("password_sealed") or "") if is_host else "",
         host_name=call_payload.get("created_by") or call_post.get(
             "author_name") or "Host",
         created_at=call_payload.get(
@@ -6074,7 +6126,8 @@ def classroom_virtual_call_host_control(classroom_id, call_post_id):
         call_payload["password_sealed"] = _seal_meeting_password(new_password)
         call_payload["password_rotated_at"] = datetime.utcnow().isoformat()
         if _virtual_call_update_post_payload(classroom_id, call_post_id, call_payload):
-            session[f"virtual_call_access_{call_post_id}"] = datetime.utcnow().isoformat()
+            session[f"virtual_call_access_{call_post_id}"] = datetime.utcnow(
+            ).isoformat()
             flash("Meeting password rotated.", "success")
         else:
             flash("Could not rotate meeting password.", "error")
@@ -6313,7 +6366,7 @@ def ai_instructor_virtual_call_summary():
 # ===================================================================================================PARENTS DASHBOARD===========
 
 
-@app.route("/parent/dashboard/<int:school_id>")
+@app.route("/parent/dashboard/<school_ref:school_id>")
 def parent_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"parent"})
@@ -6341,7 +6394,7 @@ def parent_dashboard(school_id):
 
 
 # ===================================================================================================STAFF DASHBOARD+++++++++++
-@app.route("/staff/dashboard/<int:school_id>")
+@app.route("/staff/dashboard/<school_ref:school_id>")
 def staff_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"staff"})
