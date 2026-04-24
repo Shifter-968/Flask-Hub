@@ -1,7 +1,7 @@
 {% extends "base_dashboard.html" %}
 {% set title = "Teacher Dashboard" %}
 {% set role = "Teacher" %}
-{% set tabs = ["Announcements", "Events", "Classroom", "Portal", "AI"] %}
+{% set tabs = ["Announcements", "Events", "Classroom", "Virtual Calls", "Portal", "AI"] %}
 
 {% block content %}
 <style>
@@ -479,6 +479,54 @@
                 <div style="margin-top:auto;font-size:0.88rem;font-weight:600;color:#059669;">Open → </div>
             </a>
         </div>
+    </section>
+
+    <section id="virtual-calls" class="dashboard-section">
+        <h2 class="section-header">📞 Virtual Calls</h2>
+        <p style="color:#475569;margin:0 0 16px;">All active and scheduled virtual calls across your classrooms. Go into a classroom to create or manage calls.</p>
+        {% set active_dashboard_calls = dashboard_virtual_calls | selectattr("status", "ne", "ended") | list %}
+        {% set ended_dashboard_calls = dashboard_virtual_calls | selectattr("status", "equalto", "ended") | list %}
+        {% if active_dashboard_calls %}
+        <div style="display:grid;gap:10px;margin-bottom:16px;">
+            {% for call in active_dashboard_calls %}
+            <article style="border:1px solid #dbe2f5;border-radius:12px;padding:14px;background:#f8fafc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <div>
+                    <strong style="color:#1e293b;">{{ call.title }}</strong>
+                    <div style="font-size:0.83rem;color:#64748b;margin-top:3px;">Classroom: <a href="{{ url_for('classroom_detail', classroom_id=call.classroom_id) }}" style="color:#2563eb;">{{ call.classroom_name }}</a> · Host: {{ call.created_by }}</div>
+                    {% if call.scheduled_start %}
+                    <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">Starts: {{ call.scheduled_start[:16].replace('T', ' ') }}</div>
+                    {% endif %}
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    {% if call.status == 'live' %}
+                    <span style="font-size:0.74rem;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;">Live</span>
+                    {% elif call.status == 'scheduled' %}
+                    <span style="font-size:0.74rem;font-weight:700;color:#92400e;background:#ffedd5;border:1px solid #fed7aa;border-radius:999px;padding:3px 10px;">Scheduled</span>
+                    {% endif %}
+                    <a href="{{ url_for('classroom_detail', classroom_id=call.classroom_id) }}#meetings" class="crystal-button" style="padding:7px 14px;font-size:0.84rem;">Join / Manage</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding:16px 0;">No active or scheduled calls right now. Go into a classroom to create one.</div>
+        {% endif %}
+        {% if ended_dashboard_calls %}
+        <details style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;background:#f8fafc;">
+            <summary style="cursor:pointer;font-weight:600;color:#475569;user-select:none;">Call History ({{ ended_dashboard_calls|length }})</summary>
+            <div style="display:grid;gap:8px;margin-top:10px;">
+                {% for call in ended_dashboard_calls %}
+                <article style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#ffffff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong style="color:#1e293b;font-size:0.92rem;">{{ call.title }}</strong>
+                        <div style="font-size:0.80rem;color:#64748b;">{{ call.classroom_name }} · {{ (call.created_at or '')[:16].replace('T',' ') }}</div>
+                    </div>
+                    <span style="font-size:0.74rem;font-weight:700;color:#334155;background:#e2e8f0;border:1px solid #cbd5e1;border-radius:999px;padding:3px 10px;">Ended</span>
+                </article>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
     </section>
 
     <section id="ai-panel" class="dashboard-section">

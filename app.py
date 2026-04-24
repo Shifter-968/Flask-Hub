@@ -4373,12 +4373,16 @@ def lecturer_dashboard(school_id):
     classrooms = supabase.table("classrooms").select(
         "*").eq("school_id", school_id).execute().data
 
+    # Pull virtual calls for all classrooms in this school
+    dashboard_virtual_calls = _load_dashboard_virtual_calls(classrooms)
+
     return render_template(
         "lecturer_dashboard.html",
         school_id=school_id,
         announcements=announcements,
         events=events,
         classrooms=classrooms,
+        dashboard_virtual_calls=dashboard_virtual_calls,
         instructor_ai_enabled=INSTRUCTOR_AI_PREMIUM_ENABLED,
     )
 # ==========================================================================================STUDENT DASHBOARD=============
@@ -4441,6 +4445,39 @@ def learner_dashboard(school_id):
 # ================================================================================================TEACHER DASHBOARD=======
 
 
+def _load_dashboard_virtual_calls(classrooms):
+    """Fetch all virtual calls across a list of classrooms, enriched with classroom name."""
+    if not classrooms:
+        return []
+    classroom_map = {c["id"]: c.get("name", "Classroom") for c in classrooms}
+    classroom_ids = list(classroom_map.keys())
+    try:
+        posts_resp = supabase.table("classroom_posts").select(
+            "id,classroom_id,content,author_name,created_at"
+        ).in_("classroom_id", classroom_ids).eq("role", "virtual_call").execute()
+        posts = posts_resp.data or []
+    except Exception:
+        return []
+    result = []
+    for post in posts:
+        payload = _virtual_call_payload_decode(post.get("content"))
+        if not payload:
+            continue
+        result.append({
+            "post_id": post.get("id"),
+            "classroom_id": post.get("classroom_id"),
+            "classroom_name": classroom_map.get(post.get("classroom_id"), "Classroom"),
+            "title": payload.get("title") or "Classroom Call",
+            "created_by": payload.get("created_by") or post.get("author_name") or "Host",
+            "created_at": payload.get("created_at") or post.get("created_at"),
+            "scheduled_start": payload.get("scheduled_start"),
+            "scheduled_end": payload.get("scheduled_end"),
+            "status": _virtual_call_status(payload),
+        })
+    result.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return result
+
+
 @app.route("/teacher/dashboard/<int:school_id>")
 def teacher_dashboard(school_id):
     gate = _require_authenticated_school_context(
@@ -4459,12 +4496,16 @@ def teacher_dashboard(school_id):
     classrooms = supabase.table("classrooms").select(
         "*").eq("school_id", school_id).execute().data
 
+    # Pull virtual calls for all classrooms in this school
+    dashboard_virtual_calls = _load_dashboard_virtual_calls(classrooms)
+
     return render_template(
         "teacher_dashboard.html",
         school_id=school_id,
         announcements=announcements,
         events=events,
         classrooms=classrooms,
+        dashboard_virtual_calls=dashboard_virtual_calls,
         instructor_ai_enabled=INSTRUCTOR_AI_PREMIUM_ENABLED,
     )
 
@@ -4984,6 +5025,19 @@ def classroom_detail(classroom_id):
                 flash(
                     "Join the classroom first before creating a virtual call.", "error")
                 return redirect(url_for("classroom_detail", classroom_id=classroom_id))
+            # One active call at a time per classroom
+            try:
+                existing_posts_resp = supabase.table("classroom_posts").select(
+                    "id,content").eq("classroom_id", classroom_id).eq("role", "virtual_call").execute()
+                existing_posts = existing_posts_resp.data or []
+            except Exception:
+                existing_posts = []
+            for _ep in existing_posts:
+                _ep_payload = _virtual_call_payload_decode(_ep.get("content"))
+                if _ep_payload and _virtual_call_status(_ep_payload) != "ended":
+                    flash(
+                        "There is already an active call in this classroom. End it before starting a new one.", "error")
+                    return redirect(url_for("classroom_detail", classroom_id=classroom_id))
             call_title = (request.form.get("call_title") or "").strip()
             call_password = (request.form.get("call_password") or "").strip()
             scheduled_start = (request.form.get(

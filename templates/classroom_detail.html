@@ -354,8 +354,20 @@
             </form>
 
             {% if virtual_calls %}
-            <div style="display:grid; gap:10px;">
-                {% for call in virtual_calls %}
+            {# Split into active (live/scheduled) and ended #}
+            {% set active_calls = [] %}
+            {% set ended_calls = [] %}
+            {% for call in virtual_calls %}
+                {% if call.status == 'ended' %}
+                    {% if ended_calls.append(call) %}{% endif %}
+                {% else %}
+                    {% if active_calls.append(call) %}{% endif %}
+                {% endif %}
+            {% endfor %}
+
+            {% if active_calls %}
+            <div style="display:grid; gap:10px; margin-bottom:10px;">
+                {% for call in active_calls %}
                 <article style="border:1px solid #dbe2f5; border-radius:12px; padding:12px; background:#f8fafc;">
                     <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
                         <div>
@@ -375,31 +387,23 @@
                             <span style="font-size:0.74rem; font-weight:700; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; border-radius:999px; padding:3px 8px;">Live</span>
                             {% elif call.status == 'scheduled' %}
                             <span style="font-size:0.74rem; font-weight:700; color:#92400e; background:#ffedd5; border:1px solid #fed7aa; border-radius:999px; padding:3px 8px;">Scheduled</span>
-                            {% else %}
-                            <span style="font-size:0.74rem; font-weight:700; color:#334155; background:#e2e8f0; border:1px solid #cbd5e1; border-radius:999px; padding:3px 8px;">Ended</span>
                             {% endif %}
                         </div>
                     </div>
-                    {% if call.status != 'ended' %}
                     <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
                         <input type="hidden" name="action" value="join_virtual_call">
                         <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
                         <input type="password" name="call_password" placeholder="Enter call password" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:220px;" required>
                         <button type="submit" class="crystal-button" style="margin:0; padding:9px 16px;">Join Call</button>
                     </form>
-                    {% else %}
-                    <div style="margin-top:10px; color:#64748b; font-size:0.85rem;">This call is closed and no longer accepting joins.</div>
-                    {% endif %}
 
                     {% if call.is_host %}
                     <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                        {% if call.status != 'ended' %}
                         <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                             <input type="hidden" name="action" value="virtual_call_end">
                             <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
                             <button type="submit" class="crystal-button" style="margin:0; padding:8px 14px; background:#dc2626; border-color:#dc2626; color:#fff;">End Call</button>
                         </form>
-                        {% endif %}
                         <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                             <input type="hidden" name="action" value="virtual_call_rotate_password">
                             <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
@@ -408,12 +412,32 @@
                         </form>
                     </div>
                     {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding:12px 0;">No active virtual call links yet. Create one to start a live meeting.</div>
+            {% endif %}
 
-                    {% if call.status == 'ended' and session.get('role') in ['teacher', 'lecturer'] and instructor_ai_enabled %}
-                    <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
-                        <textarea id="sessionNotesHostInput{{ call.post_id }}" placeholder="Optional host notes to guide AI summary..." style="width:100%; min-height:70px; padding:10px; border-radius:10px; border:1px solid #cbd5e1;"></textarea>
-                        <button type="button" class="crystal-button generateSessionNotesBtn" data-call-id="{{ call.post_id }}" style="margin:8px 0 0; padding:8px 14px;">Generate Session Notes</button>
-                        <div id="sessionNotesOutput{{ call.post_id }}" style="margin-top:8px; border:1px solid #dbe2f5; border-radius:10px; background:#ffffff; padding:10px; color:#334155; white-space:pre-wrap;">{% if call.session_summary %}Summary: {{ call.session_summary }}{% if call.session_action_items %}
+            {% if ended_calls %}
+            <details style="border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; background:#f8fafc; margin-top:10px;">
+                <summary style="cursor:pointer; font-weight:600; color:#475569; user-select:none;">Call History ({{ ended_calls|length }})</summary>
+                <div style="display:grid; gap:8px; margin-top:10px;">
+                    {% for call in ended_calls %}
+                    <article style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#ffffff;">
+                        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;">
+                            <div>
+                                <strong style="color:#1e293b;">{{ call.title }}</strong>
+                                <div style="font-size:0.84rem; color:#64748b; margin-top:4px;">Host: {{ call.created_by }}{% if call.created_at %} | {{ call.created_at[:16].replace('T', ' ') }}{% endif %}</div>
+                                <div style="font-size:0.78rem; color:#64748b; margin-top:3px;">Participants: {{ call.participant_count or 0 }} | Join events: {{ call.join_events or 0 }}</div>
+                            </div>
+                            <span style="font-size:0.74rem; font-weight:700; color:#334155; background:#e2e8f0; border:1px solid #cbd5e1; border-radius:999px; padding:3px 8px;">Ended</span>
+                        </div>
+                        {% if call.is_host and session.get('role') in ['teacher', 'lecturer'] and instructor_ai_enabled %}
+                        <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+                            <textarea id="sessionNotesHostInput{{ call.post_id }}" placeholder="Optional host notes to guide AI summary..." style="width:100%; min-height:70px; padding:10px; border-radius:10px; border:1px solid #cbd5e1;"></textarea>
+                            <button type="button" class="crystal-button generateSessionNotesBtn" data-call-id="{{ call.post_id }}" style="margin:8px 0 0; padding:8px 14px;">Generate Session Notes</button>
+                            <div id="sessionNotesOutput{{ call.post_id }}" style="margin-top:8px; border:1px solid #dbe2f5; border-radius:10px; background:#ffffff; padding:10px; color:#334155; white-space:pre-wrap;">{% if call.session_summary %}Summary: {{ call.session_summary }}{% if call.session_action_items %}
 
 Action Items:
 {% for item in call.session_action_items %}- {{ item }}
@@ -424,11 +448,14 @@ Follow-ups:
 {% endfor %}{% endif %}{% if call.session_notes_generated_at %}
 
 Generated: {{ call.session_notes_generated_at[:16].replace('T', ' ') }}{% endif %}{% else %}No session notes yet for this ended call.{% endif %}</div>
-                    </div>
-                    {% endif %}
-                </article>
-                {% endfor %}
-            </div>
+                        </div>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endif %}
+
             {% else %}
             <div class="empty-state" style="padding:12px 0;">No active virtual call links yet. Create one to start a live meeting.</div>
             {% endif %}
