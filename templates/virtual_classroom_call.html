@@ -8,7 +8,7 @@
     .call-shell {
         display: grid;
         gap: 14px;
-        max-width: 1200px;
+        max-width: 1240px;
     }
     .call-card {
         background: #ffffff;
@@ -33,22 +33,62 @@
         font-weight: 800;
         border: 1px solid;
     }
-    .pill.live { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+    .pill.live      { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
     .pill.scheduled { color: #92400e; background: #ffedd5; border-color: #fed7aa; }
-    .pill.ended { color: #334155; background: #e2e8f0; border-color: #cbd5e1; }
+    .pill.ended     { color: #334155; background: #e2e8f0; border-color: #cbd5e1; }
+
+    /* ── Media controls bar ─────────────────── */
+    .media-bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 10px 0 4px;
+    }
+    .media-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 16px;
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #1e293b;
+        cursor: pointer;
+        transition: background 0.18s, border-color 0.18s, transform 0.14s;
+    }
+    .media-btn:hover { background: #eff6ff; border-color: #93c5fd; transform: translateY(-1px); }
+    .media-btn.active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
+    .media-btn.danger-btn { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .media-btn.danger-btn:hover { background: #fecaca; border-color: #f87171; }
+
+    /* ── Jitsi container ─────────────────────── */
     .call-frame-wrap {
         border: 1px solid #cbd5e1;
         border-radius: 14px;
         overflow: hidden;
         background: #0f172a;
+        min-height: 76vh;
     }
-    .call-frame {
+    #jitsiContainer {
         width: 100%;
-        min-height: 74vh;
-        border: none;
-        background: #0f172a;
+        min-height: 76vh;
+    }
+    .call-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 76vh;
+        color: rgba(248,250,252,0.6);
+        font-size: 1rem;
+        gap: 10px;
     }
 </style>
+
+<!-- Jitsi Meet External API -->
+<script src="https://meet.jit.si/external_api.js"></script>
 
 <div class="call-shell">
     <section class="call-card">
@@ -62,7 +102,17 @@
             {% if scheduled_end %}<span>End: {{ scheduled_end[:16].replace('T', ' ') }}</span>{% endif %}
             <span class="pill {{ call_status }}">{{ call_status|upper }}</span>
         </div>
-        <p style="margin:10px 0 0; color:#475569;">This call runs inside your app using an embedded video-conference room. Share the call password privately with participants.</p>
+
+        <!-- Media controls -->
+        <div class="media-bar">
+            <button id="btnMic"        class="media-btn active" type="button">🎙️ Mic On</button>
+            <button id="btnCam"        class="media-btn active" type="button">📹 Camera On</button>
+            <button id="btnScreen"     class="media-btn"        type="button">🖥️ Share Screen</button>
+            <button id="btnRaise"      class="media-btn"        type="button">✋ Raise Hand</button>
+            <button id="btnFullscreen" class="media-btn"        type="button">⛶ Fullscreen</button>
+        </div>
+
+        <p style="margin:6px 0 0; color:#475569; font-size:0.88rem;">Use the controls above or the in-call toolbar to manage audio, video, and screen sharing. Share the call password privately with participants.</p>
         <div style="margin-top:12px;">
             <a href="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" class="crystal-button" style="margin:0;">Back to Classroom</a>
         </div>
@@ -82,14 +132,13 @@
         {% endif %}
     </section>
 
-    <section class="call-card">
+    <section class="call-card" style="padding:0; overflow:hidden;">
         <div class="call-frame-wrap">
-            <iframe
-                class="call-frame"
-                allow="camera; microphone; display-capture; fullscreen"
-                src="https://meet.jit.si/{{ room_name }}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&interfaceConfig.DISABLE_JOIN_LEAVE_NOTIFICATIONS=true"
-                title="Virtual Classroom Call"
-            ></iframe>
+            <div id="jitsiContainer">
+                <div class="call-loading">
+                    <span style="font-size:1.4rem;">📹</span> Connecting to meeting room…
+                </div>
+            </div>
         </div>
     </section>
 </div>
@@ -97,7 +146,124 @@
 <script>
 (() => {
     const attendanceUrl = "{{ url_for('classroom_virtual_call_attendance', classroom_id=classroom.id, call_post_id=call_post_id) }}";
+    const roomName      = {{ room_name | tojson }};
+    const displayName   = {{ (session.get('user_name') or session.get('username') or 'Participant') | tojson }};
 
+    // ── Jitsi External API ───────────────────────────────────
+    const domain = 'meet.jit.si';
+    const options = {
+        roomName: roomName,
+        parentNode: document.getElementById('jitsiContainer'),
+        width: '100%',
+        height: '76vh',
+        configOverwrite: {
+            prejoinPageEnabled: false,
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            disableDeepLinking: true,
+            enableClosePage: false,
+        },
+        interfaceConfigOverwrite: {
+            DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+            DEFAULT_REMOTE_DISPLAY_NAME: 'Student',
+            TOOLBAR_BUTTONS: [
+                'microphone', 'camera', 'desktop', 'fullscreen',
+                'fodeviceselection', 'hangup', 'chat', 'recording',
+                'livestreaming', 'etherpad', 'sharedvideo',
+                'settings', 'raisehand', 'videoquality', 'filmstrip',
+                'invite', 'feedback', 'stats', 'shortcuts', 'tileview',
+                'select-background', 'mute-everyone', 'security'
+            ],
+        },
+        userInfo: { displayName: displayName },
+    };
+
+    let api;
+    try {
+        api = new JitsiMeetExternalAPI(domain, options);
+    } catch (err) {
+        document.getElementById('jitsiContainer').innerHTML =
+            '<div class="call-loading" style="flex-direction:column;gap:8px;">' +
+            '<span style="font-size:1.4rem;">⚠️</span>' +
+            '<span>Could not load the call room. Please allow camera/microphone access and reload.</span>' +
+            '</div>';
+    }
+
+    // ── Media control buttons ────────────────────────────────
+    let micOn    = true;
+    let camOn    = true;
+    let screenOn = false;
+    let handUp   = false;
+
+    function updateBtn(btn, active, onLabel, offLabel) {
+        btn.textContent = active ? onLabel : offLabel;
+        btn.classList.toggle('active', active);
+    }
+
+    const btnMic    = document.getElementById('btnMic');
+    const btnCam    = document.getElementById('btnCam');
+    const btnScreen = document.getElementById('btnScreen');
+    const btnRaise  = document.getElementById('btnRaise');
+    const btnFull   = document.getElementById('btnFullscreen');
+
+    btnMic.addEventListener('click', () => {
+        if (!api) return;
+        api.executeCommand('toggleAudio');
+        micOn = !micOn;
+        updateBtn(btnMic, micOn, '🎙️ Mic On', '🔇 Mic Off');
+    });
+
+    btnCam.addEventListener('click', () => {
+        if (!api) return;
+        api.executeCommand('toggleVideo');
+        camOn = !camOn;
+        updateBtn(btnCam, camOn, '📹 Camera On', '🚫 Camera Off');
+    });
+
+    btnScreen.addEventListener('click', () => {
+        if (!api) return;
+        api.executeCommand('toggleShareScreen');
+        screenOn = !screenOn;
+        updateBtn(btnScreen, screenOn, '🖥️ Sharing', '🖥️ Share Screen');
+    });
+
+    btnRaise.addEventListener('click', () => {
+        if (!api) return;
+        api.executeCommand('toggleRaiseHand');
+        handUp = !handUp;
+        updateBtn(btnRaise, handUp, '✋ Hand Raised', '✋ Raise Hand');
+    });
+
+    btnFull.addEventListener('click', () => {
+        const container = document.getElementById('jitsiContainer');
+        if (document.fullscreenElement) {
+            document.exitFullscreen && document.exitFullscreen();
+        } else {
+            container.requestFullscreen && container.requestFullscreen();
+        }
+    });
+
+    // Sync button states when in-call toolbar is used
+    if (api) {
+        api.addEventListeners({
+            audioMuteStatusChanged: ({ muted }) => {
+                micOn = !muted;
+                updateBtn(btnMic, micOn, '🎙️ Mic On', '🔇 Mic Off');
+            },
+            videoMuteStatusChanged: ({ muted }) => {
+                camOn = !muted;
+                updateBtn(btnCam, camOn, '📹 Camera On', '🚫 Camera Off');
+            },
+            screenSharingStatusChanged: ({ on }) => {
+                screenOn = on;
+                updateBtn(btnScreen, screenOn, '🖥️ Sharing', '🖥️ Share Screen');
+            },
+        });
+    }
+
+    // ── Attendance tracking ──────────────────────────────────
     async function sendEvent(eventName) {
         try {
             await fetch(attendanceUrl, {
@@ -106,23 +272,17 @@
                 body: JSON.stringify({event: eventName}),
                 keepalive: true,
             });
-        } catch (err) {
-            // best-effort only
-        }
+        } catch (err) {}
     }
 
     const leavePayload = JSON.stringify({event: "leave"});
     window.addEventListener("beforeunload", () => {
         try {
             navigator.sendBeacon(attendanceUrl, new Blob([leavePayload], {type: "application/json"}));
-        } catch (err) {
-            // ignore
-        }
+        } catch (err) {}
     });
 
-    setInterval(() => {
-        sendEvent("heartbeat");
-    }, 45000);
+    setInterval(() => { sendEvent("heartbeat"); }, 45000);
 })();
 </script>
 {% endblock %}
