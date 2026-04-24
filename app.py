@@ -1,4 +1,5 @@
 from werkzeug.routing import BaseConverter as _BaseConverter
+from werkzeug.routing import ValidationError as _RoutingValidationError
 from imports import *
 from datetime import timedelta
 import supabase
@@ -36,6 +37,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallbacksecret")
+SIGNED_ID_TOKEN_SALT = "signed-id-v1"
 SCHOOL_LINK_TOKEN_SALT = "school-link-v1"
 MEETING_PASSWORD_TOKEN_SALT = "meeting-password-v1"
 
@@ -671,7 +673,7 @@ def submit_main_contact_message():
     return redirect(url_for("contact"))
 
 
-@app.route("/school/<int:school_id>/contact/send", methods=["POST"])
+@app.route("/school/<signed_id:school_id>/contact/send", methods=["POST"])
 def submit_school_contact_message(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -755,7 +757,7 @@ def admin_contact_messages():
     )
 
 
-@app.route("/school/<int:school_id>/admin/contact-messages")
+@app.route("/school/<signed_id:school_id>/admin/contact-messages")
 def school_admin_contact_messages(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -974,7 +976,7 @@ def add_user():
 # ------------------------------------------------------------------------------------------------Edit User -----------------
 
 
-@app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
+@app.route("/edit_user/<signed_id:user_id>", methods=["GET", "POST"])
 def edit_user(user_id):
     gate = _require_global_admin()
     if gate:
@@ -1054,7 +1056,7 @@ def edit_user(user_id):
 # -----------------------------------------------------------------------------------------------Delete User --------------
 
 
-@app.route("/delete_user/<int:user_id>")
+@app.route("/delete_user/<signed_id:user_id>")
 def delete_user(user_id):
     gate = _require_global_admin()
     if gate:
@@ -1075,7 +1077,7 @@ def delete_user(user_id):
 # -------------------User Profile-----------------------
 
 
-# @app.route("/user/<int:user_id>", methods=["GET", "POST"])
+# @app.route("/user/<signed_id:user_id>", methods=["GET", "POST"])
 # def user_profile(user_id):
 
 
@@ -1123,7 +1125,7 @@ def add_school():
 # -------------------------------------------------------------------------------------------------------Edit School------------
 
 
-@app.route("/edit_school/<int:school_id>", methods=["GET", "POST"])
+@app.route("/edit_school/<signed_id:school_id>", methods=["GET", "POST"])
 def edit_school(school_id):
     gate = _require_global_admin()
     if gate:
@@ -1156,7 +1158,7 @@ def edit_school(school_id):
 # ------------------------------------------------------------------------------------------------------- Delete School---------------
 
 
-@app.route("/delete_school/<int:school_id>")
+@app.route("/delete_school/<signed_id:school_id>")
 def delete_school(school_id):
     gate = _require_global_admin()
     if gate:
@@ -1169,7 +1171,7 @@ def delete_school(school_id):
 # ----------------------------------------------------------------------------------------------------------School Index----------
 
 
-@app.route("/school/<int:school_id>")
+@app.route("/school/<signed_id:school_id>")
 def school_index(school_id):
     return redirect(url_for("school_page", school_id=school_id, page_slug="home"))
 
@@ -1282,6 +1284,10 @@ def _school_link_serializer():
     return URLSafeSerializer(app.secret_key, salt=SCHOOL_LINK_TOKEN_SALT)
 
 
+def _signed_id_serializer():
+    return URLSafeSerializer(app.secret_key, salt=SIGNED_ID_TOKEN_SALT)
+
+
 def _meeting_password_serializer():
     return URLSafeSerializer(app.secret_key, salt=MEETING_PASSWORD_TOKEN_SALT)
 
@@ -1333,6 +1339,33 @@ def _decode_school_ref(school_ref):
     return _parse_int(payload.get("school_id"))
 
 
+def _encode_signed_id(value):
+    id_int = _parse_int(value)
+    if id_int is None:
+        return None
+    try:
+        return _signed_id_serializer().dumps({"id": id_int})
+    except Exception:
+        return None
+
+
+def _decode_signed_id(value):
+    raw_int = _parse_int(value)
+    if raw_int is not None:
+        return raw_int
+
+    token = (value or "").strip()
+    if not token:
+        return None
+    try:
+        payload = _signed_id_serializer().loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return _parse_int(payload.get("id"))
+
+
 def _school_login_url(school_id=None):
     school_id_int = _parse_int(school_id)
     if school_id_int is None:
@@ -1359,7 +1392,7 @@ def inject_school_link_helpers():
     }
 
 
-# ── School-ref URL converter ────────────────────────────────────────────────────
+# School-ref URL converter.
 # Encodes school IDs as itsdangerous signed tokens inside URL path segments so
 # that dashboard URLs look like /teacher/dashboard/eyJzY2...abc instead of
 # /teacher/dashboard/1.  Plain integer strings (legacy/bookmarked URLs) are
@@ -1372,7 +1405,7 @@ class _SchoolRefConverter(_BaseConverter):
     def to_python(self, value):
         result = _decode_school_ref(value)
         if result is None:
-            raise ValueError(f"Invalid school ref: {value!r}")
+            raise _RoutingValidationError()
         return result
 
     def to_url(self, value):
@@ -1380,8 +1413,22 @@ class _SchoolRefConverter(_BaseConverter):
         return encoded if encoded else str(value)
 
 
+class _SignedIdConverter(_BaseConverter):
+    regex = r"[^/]+"
+
+    def to_python(self, value):
+        result = _decode_signed_id(value)
+        if result is None:
+            raise _RoutingValidationError()
+        return result
+
+    def to_url(self, value):
+        encoded = _encode_signed_id(value)
+        return encoded if encoded else str(value)
+
+
 app.url_map.converters["school_ref"] = _SchoolRefConverter
-# ───────────────────────────────────────────────────────────────────────────────
+app.url_map.converters["signed_id"] = _SignedIdConverter
 
 
 def _current_school_dashboard_url():
@@ -2271,8 +2318,8 @@ def _build_admin_user_management_data(selected_tab=None):
             "subscription_status": profile.get("subscription_status") or "",
             "department": profile.get("department") or "",
             "year_semester": (
-                f"Y{profile.get('year_of_study') or '—'} / S{profile.get('semester') or '—'}"
-                if role == "student" else "—"
+                f"Y{profile.get('year_of_study') or '-'} / S{profile.get('semester') or '-'}"
+                if role == "student" else "-"
             ),
         })
 
@@ -2320,7 +2367,7 @@ def _resolve_school_template(school):
     return "school_site_page.html"
 
 
-@app.route("/school/<int:school_id>/vacancies/<news_slug>")
+@app.route("/school/<signed_id:school_id>/vacancies/<news_slug>")
 def school_news_detail(school_id, news_slug):
     school = _get_school_record(school_id)
     if not school:
@@ -2361,7 +2408,7 @@ def school_news_detail(school_id, news_slug):
     )
 
 
-@app.route("/school/<int:school_id>/<page_slug>")
+@app.route("/school/<signed_id:school_id>/<page_slug>")
 def school_page(school_id, page_slug):
     school = _get_school_record(school_id)
     if not school:
@@ -2609,7 +2656,7 @@ def admin_subjects():
     return render_template("admin_subjects.html", subjects=subjects, schools=schools)
 
 
-@app.route("/admin/subjects/edit/<int:subject_id>", methods=["POST"])
+@app.route("/admin/subjects/edit/<signed_id:subject_id>", methods=["POST"])
 def edit_subject(subject_id):
     gate = _require_global_admin()
     if gate:
@@ -2640,7 +2687,7 @@ def edit_subject(subject_id):
     return redirect(url_for("admin_subjects"))
 
 
-@app.route("/admin/subjects/delete/<int:subject_id>")
+@app.route("/admin/subjects/delete/<signed_id:subject_id>")
 def delete_subject(subject_id):
     gate = _require_global_admin()
     if gate:
@@ -2673,7 +2720,7 @@ def admin_courses():
     return render_template("admin_courses.html", courses=courses, schools=schools)
 
 
-@app.route("/admin/courses/edit/<int:course_id>", methods=["POST"])
+@app.route("/admin/courses/edit/<signed_id:course_id>", methods=["POST"])
 def edit_course(course_id):
     gate = _require_global_admin()
     if gate:
@@ -2701,7 +2748,7 @@ def edit_course(course_id):
     return redirect(url_for("admin_courses"))
 
 
-@app.route("/admin/courses/delete/<int:course_id>")
+@app.route("/admin/courses/delete/<signed_id:course_id>")
 def delete_course(course_id):
     gate = _require_global_admin()
     if gate:
@@ -2738,7 +2785,7 @@ def admin_modules():
     return render_template("admin_modules.html", modules=modules, schools=schools)
 
 
-@app.route("/admin/modules/edit/<int:module_id>", methods=["POST"])
+@app.route("/admin/modules/edit/<signed_id:module_id>", methods=["POST"])
 def edit_module(module_id):
     gate = _require_global_admin()
     if gate:
@@ -2772,7 +2819,7 @@ def edit_module(module_id):
     return redirect(url_for("admin_modules"))
 
 
-@app.route("/admin/modules/delete/<int:module_id>")
+@app.route("/admin/modules/delete/<signed_id:module_id>")
 def delete_module(module_id):
     gate = _require_global_admin()
     if gate:
@@ -2814,7 +2861,7 @@ def admin_curriculum():
                            mappings=mappings)
 
 
-@app.route("/admin/curriculum/edit/<int:mapping_id>", methods=["POST"])
+@app.route("/admin/curriculum/edit/<signed_id:mapping_id>", methods=["POST"])
 def edit_mapping(mapping_id):
     gate = _require_global_admin()
     if gate:
@@ -2846,7 +2893,7 @@ def edit_mapping(mapping_id):
     return redirect(url_for("admin_curriculum"))
 
 
-@app.route("/admin/curriculum/delete/<int:mapping_id>")
+@app.route("/admin/curriculum/delete/<signed_id:mapping_id>")
 def delete_mapping(mapping_id):
     gate = _require_global_admin()
     if gate:
@@ -2857,7 +2904,7 @@ def delete_mapping(mapping_id):
 
 
 # -------------------------------------------------------------------------------------------------------REGISTRATION MANAGEMENT--------------
-@app.route("/school/<int:school_id>/register", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/register", methods=["GET", "POST"])
 def register(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -2997,7 +3044,7 @@ def register_student():
 
         if not student:
             flash(
-                "Student profile saved but could not retrieve ID — modules may not be auto-assigned.", "warning")
+                "Student profile saved but could not retrieve ID - modules may not be auto-assigned.", "warning")
             return redirect(url_for("login"))
 
         student_id = student["id"]
@@ -3025,7 +3072,7 @@ def register_student():
     courses = _select_school_scoped(
         "courses", school_id=_parse_int(session.get("school_id")), order_by="name")
 
-    # GET request → render form with courses
+    # GET request -> render form with courses
     return render_template("register_student.html",
                            user_id=session.get("user_id"),
                            school_id=session.get("school_id"),
@@ -3044,7 +3091,7 @@ def register_student():
 #       session["selected_course_id"] = course_id
 #       return redirect(url_for("register_student"))
 
-    # GET request → show dropdown
+    # GET request -> show dropdown
 #   return render_template("select_course.html", courses=courses)
 
 
@@ -3068,7 +3115,7 @@ def register_student_modules():
         flash("Modules assigned successfully!", "success")
         return redirect(url_for("login"))
 
-    # GET → show available modules
+    # GET -> show available modules
     student_id = request.args.get("student_id")  # comes from redirect
     modules = supabase.table("modules").select("*").execute().data
     return render_template("student_modules.html",
@@ -3127,7 +3174,7 @@ def register_learner():
         flash("Learner registered successfully! Now select subjects.", "success")
         return redirect(url_for("register_learner_subjects", learner_id=learner_id))
 
-    # GET request → just render the learner details form
+    # GET request -> just render the learner details form
     school = _school_from_form_or_session(session.get("school_id"))
     if school and not _school_allows_role(school, "learner"):
         return _reject_disallowed_role("learner", school)
@@ -3156,7 +3203,7 @@ def register_learner_subjects():
         flash("Subjects assigned successfully!", "success")
         return redirect(url_for("login"))
 
-    # GET → show available subjects
+    # GET -> show available subjects
     learner_id = request.args.get("learner_id")  # comes from redirect
     subjects = supabase.table("subjects").select("*").execute().data
     return render_template("learner_subjects.html",
@@ -3570,7 +3617,7 @@ def google_complete_signup():
     )
 
 
-@app.route("/school/<int:school_id>/admin")
+@app.route("/school/<signed_id:school_id>/admin")
 def school_admin_dashboard(school_id):
     if session.get("role") != "school_admin" or int(session.get("school_id") or 0) != school_id:
         flash("School admin access required.", "error")
@@ -3624,7 +3671,7 @@ def school_admin_dashboard(school_id):
     return render_template("school_admin_dashboard.html", school=school, stats=stats, is_tertiary=is_tertiary, portal_settings=portal_settings)
 
 
-# ==========================================================================================SCHOOL ADMIN – MANAGE ENROLLEES=======
+# ==========================================================================================SCHOOL ADMIN - MANAGE ENROLLEES=======
 
 def _require_school_admin(school_id):
     if session.get("role") != "school_admin" or int(session.get("school_id") or 0) != school_id:
@@ -3642,7 +3689,7 @@ def _require_admin_or_school_admin_for_school(school_id):
     return redirect(url_for("login"))
 
 
-@app.route("/school/<int:school_id>/admin/students", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/students", methods=["GET", "POST"])
 def admin_manage_students(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -3663,7 +3710,7 @@ def admin_manage_students(school_id):
             payload = {
                 "name": name,
                 "school_id": school_id,
-                "user_id": None,   # no account required — admin-registered
+                "user_id": None,   # no account required - admin-registered
             }
             if is_tertiary:
                 payload["year_of_study"] = request.form.get(
@@ -3702,7 +3749,7 @@ def admin_manage_students(school_id):
 
         return redirect(url_for("admin_manage_students", school_id=school_id))
 
-    # GET — load list
+    # GET - load list
     enrollees = []
     try:
         enrollees = supabase.table(table).select(
@@ -3728,7 +3775,7 @@ def admin_manage_students(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/admin/classrooms", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/classrooms", methods=["GET", "POST"])
 def admin_manage_classrooms(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -3784,7 +3831,7 @@ def admin_manage_classrooms(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/admin/staff", methods=["GET"])
+@app.route("/school/<signed_id:school_id>/admin/staff", methods=["GET"])
 def admin_manage_staff(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -3809,7 +3856,7 @@ def admin_manage_staff(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/admin/subjects", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/subjects", methods=["GET", "POST"])
 def admin_manage_subjects(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -3892,7 +3939,7 @@ def _require_school_admin_tertiary(school_id):
     return None
 
 
-@app.route("/school/<int:school_id>/admin/courses", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/courses", methods=["GET", "POST"])
 def school_admin_courses(school_id):
     gate = _require_school_admin_tertiary(school_id)
     if gate:
@@ -3951,7 +3998,7 @@ def school_admin_courses(school_id):
     return render_template("admin_manage_courses.html", school=school, school_id=school_id, courses=courses)
 
 
-@app.route("/school/<int:school_id>/admin/modules", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/modules", methods=["GET", "POST"])
 def school_admin_modules(school_id):
     gate = _require_school_admin_tertiary(school_id)
     if gate:
@@ -4017,7 +4064,7 @@ def school_admin_modules(school_id):
     return render_template("admin_manage_modules.html", school=school, school_id=school_id, modules=modules)
 
 
-@app.route("/school/<int:school_id>/admin/curriculum", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/curriculum", methods=["GET", "POST"])
 def school_admin_curriculum(school_id):
     gate = _require_school_admin_tertiary(school_id)
     if gate:
@@ -4092,7 +4139,7 @@ def school_admin_curriculum(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/admin/portal-settings", methods=["POST"])
+@app.route("/school/<signed_id:school_id>/admin/portal-settings", methods=["POST"])
 def admin_update_portal_settings(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -4146,7 +4193,7 @@ def admin_update_portal_settings(school_id):
     return redirect(url_for("school_admin_dashboard", school_id=school_id))
 
 
-@app.route("/school/<int:school_id>/admin/announcements", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/announcements", methods=["GET", "POST"])
 def admin_manage_announcements(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -4227,7 +4274,7 @@ def admin_manage_announcements(school_id):
 
         return redirect(url_for("admin_manage_announcements", school_id=school_id))
 
-    # GET — load list
+    # GET - load list
     announcements = []
     try:
         announcements = supabase.table("announcements").select(
@@ -4243,7 +4290,7 @@ def admin_manage_announcements(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/admin/events", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/admin/events", methods=["GET", "POST"])
 def admin_manage_events(school_id):
     gate = _require_school_admin(school_id)
     if gate:
@@ -4288,7 +4335,7 @@ def admin_manage_events(school_id):
 
         return redirect(url_for("admin_manage_events", school_id=school_id))
 
-    # GET — load list
+    # GET - load list
     events = []
     try:
         events = supabase.table("events").select(
@@ -4777,7 +4824,7 @@ def global_virtual_meetings(school_id):
     )
 
 
-@app.route("/virtual-meetings/<school_ref:school_id>/call/<int:meeting_id>")
+@app.route("/virtual-meetings/<school_ref:school_id>/call/<signed_id:meeting_id>")
 def global_virtual_meeting_room(school_id, meeting_id):
     gate = _require_authenticated_school_context(
         school_id,
@@ -5035,7 +5082,7 @@ def _session_is_classroom_member(classroom_id):
         return False
 
 
-@app.route("/classroom/<int:classroom_id>", methods=["GET", "POST"])
+@app.route("/classroom/<signed_id:classroom_id>", methods=["GET", "POST"])
 def classroom_detail(classroom_id):
     classroom_resp = supabase.table("classrooms").select(
         "*").eq("id", classroom_id).execute()
@@ -5723,7 +5770,7 @@ def classroom_detail(classroom_id):
         members = []
         seen_user_ids = set()  # Track seen user IDs to avoid duplicates
 
-        # Determine classroom type: lecturer_id → university, teacher_id → school
+        # Determine classroom type: lecturer_id -> university, teacher_id -> school
         is_university_classroom = bool(classroom.get("lecturer_id"))
 
         try:
@@ -5977,7 +6024,7 @@ def classroom_detail(classroom_id):
     )
 
 
-@app.route("/classroom/<int:classroom_id>/virtual-call/<int:call_post_id>")
+@app.route("/classroom/<signed_id:classroom_id>/virtual-call/<signed_id:call_post_id>")
 def classroom_virtual_call(classroom_id, call_post_id):
     classroom_resp = supabase.table("classrooms").select(
         "*").eq("id", classroom_id).limit(1).execute()
@@ -6047,7 +6094,7 @@ def classroom_virtual_call(classroom_id, call_post_id):
     )
 
 
-@app.route("/classroom/<int:classroom_id>/virtual-call/<int:call_post_id>/attendance", methods=["POST"])
+@app.route("/classroom/<signed_id:classroom_id>/virtual-call/<signed_id:call_post_id>/attendance", methods=["POST"])
 def classroom_virtual_call_attendance(classroom_id, call_post_id):
     if not _session_is_classroom_member(classroom_id):
         return jsonify({"error": "Access denied."}), 403
@@ -6085,7 +6132,7 @@ def classroom_virtual_call_attendance(classroom_id, call_post_id):
     return jsonify({"ok": True})
 
 
-@app.route("/classroom/<int:classroom_id>/virtual-call/<int:call_post_id>/host-control", methods=["POST"])
+@app.route("/classroom/<signed_id:classroom_id>/virtual-call/<signed_id:call_post_id>/host-control", methods=["POST"])
 def classroom_virtual_call_host_control(classroom_id, call_post_id):
     if not _session_is_classroom_member(classroom_id):
         flash("Access denied.", "error")
@@ -6679,7 +6726,7 @@ def _insert_classroom_membership(classroom_id, member_col, member_val, member_ro
 # ---------------------------------------------------------Update classrooms
 
 
-@app.route("/classrooms/update/<int:classroom_id>", methods=["GET", "POST"])
+@app.route("/classrooms/update/<signed_id:classroom_id>", methods=["GET", "POST"])
 def update_classroom(classroom_id):
     if request.method == "POST":
         payload = {
@@ -6703,7 +6750,7 @@ def update_classroom(classroom_id):
             return redirect(url_for("lecturer_dashboard", school_id=session.get("school_id")))
         return redirect(url_for("login"))
 
-    # GET request → fetch classroom data for editing
+    # GET request -> fetch classroom data for editing
     classroom_resp = supabase.table("classrooms").select(
         "*").eq("id", classroom_id).execute()
     classroom_data = classroom_resp.data[0] if classroom_resp.data else None
@@ -6731,7 +6778,7 @@ def update_classroom(classroom_id):
    # ------------------------------------------------------------Delete classrooms
 
 
-@app.route("/classrooms/delete/<int:classroom_id>", methods=["POST"])
+@app.route("/classrooms/delete/<signed_id:classroom_id>", methods=["POST"])
 def delete_classroom(classroom_id):
     supabase.table("classrooms").delete().eq("id", classroom_id).execute()
     flash("Classroom deleted successfully!", "success")
@@ -6854,7 +6901,7 @@ def _redirect_to_user_dashboard():
 
 # ====================================================================================SEARCH ENROLLEES (teacher/lecturer live search)==
 
-@app.route("/school/<int:school_id>/search-enrollees")
+@app.route("/school/<signed_id:school_id>/search-enrollees")
 def search_enrollees(school_id):
     """JSON endpoint: search students or learners by name for teacher/lecturer classroom assignment."""
     if not session.get("teacher_id") and not session.get("lecturer_id") and session.get("role") != "school_admin":
@@ -6886,7 +6933,7 @@ def search_enrollees(school_id):
 
 # ====================================================================================ADD STUDENT TO CLASSROOM (teacher/lecturer)==
 
-@app.route("/classroom/<int:classroom_id>/add-student", methods=["POST"])
+@app.route("/classroom/<signed_id:classroom_id>/add-student", methods=["POST"])
 def add_student_to_classroom(classroom_id):
     """Teacher/lecturer manually adds a student or learner to a classroom."""
     if not session.get("teacher_id") and not session.get("lecturer_id"):
@@ -6960,7 +7007,7 @@ def add_student_to_classroom(classroom_id):
     return redirect(url_for("classroom_detail", classroom_id=classroom_id))
 
 
-# ====================================================================================PORTAL – shared helpers====================
+# ====================================================================================PORTAL - shared helpers====================
 PORTAL_ASSESSMENT_TYPES = ["test", "project", "exam"]
 
 
@@ -7129,7 +7176,7 @@ def symbol_to_gpa(symbol):
 
 # ====================================================================================PORTAL DASHBOARD====================
 
-@app.route("/portal/<int:school_id>")
+@app.route("/portal/<signed_id:school_id>")
 def portal_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7142,9 +7189,9 @@ def portal_dashboard(school_id):
     return render_template("portal_dashboard.html", school_id=school_id, actor_type=actor_type, cycle_meta=cycle_meta)
 
 
-# ====================================================================================PORTAL ASSIGNMENTS – classroom list====================
+# ====================================================================================PORTAL ASSIGNMENTS - classroom list====================
 
-@app.route("/portal/<int:school_id>/assignments")
+@app.route("/portal/<signed_id:school_id>/assignments")
 def portal_assignments(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7164,9 +7211,9 @@ def portal_assignments(school_id):
     return render_template("portal_assignments.html", school_id=school_id, classrooms=classrooms, actor_type=actor_type, cycle_meta=cycle_meta)
 
 
-# ====================================================================================PORTAL ASSIGNMENTS – students in classroom====================
+# ====================================================================================PORTAL ASSIGNMENTS - students in classroom====================
 
-@app.route("/portal/<int:school_id>/assignments/<int:classroom_id>")
+@app.route("/portal/<signed_id:school_id>/assignments/<signed_id:classroom_id>")
 def portal_classroom_students(school_id, classroom_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7235,9 +7282,9 @@ def portal_student_subject_options():
     return jsonify({"ok": True, "items": options})
 
 
-# ====================================================================================PORTAL ASSIGNMENTS – student performance table====================
+# ====================================================================================PORTAL ASSIGNMENTS - student performance table====================
 
-@app.route("/portal/<int:school_id>/assignments/<int:classroom_id>/student/<int:student_id>/<student_type>")
+@app.route("/portal/<signed_id:school_id>/assignments/<signed_id:classroom_id>/student/<signed_id:student_id>/<student_type>")
 def portal_student_performance(school_id, classroom_id, student_id, student_type):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7363,7 +7410,7 @@ def portal_student_performance(school_id, classroom_id, student_id, student_type
                            yearly_trend=yearly_trend)
 
 
-# ====================================================================================PORTAL – record performance (POST)====================
+# ====================================================================================PORTAL - record performance (POST)====================
 
 @app.route("/portal/record_performance", methods=["POST"])
 def record_performance():
@@ -7455,9 +7502,9 @@ def record_performance():
     return redirect(redirect_url)
 
 
-# ====================================================================================PORTAL – delete performance record====================
+# ====================================================================================PORTAL - delete performance record====================
 
-@app.route("/portal/delete_performance/<int:record_id>", methods=["POST"])
+@app.route("/portal/delete_performance/<signed_id:record_id>", methods=["POST"])
 def delete_performance(record_id):
     if not session.get("teacher_id") and not session.get("lecturer_id"):
         flash("Access denied.", "error")
@@ -7482,9 +7529,9 @@ def delete_performance(record_id):
                             student_id=student_id, student_type=student_type))
 
 
-# ====================================================================================PORTAL TERM RESULTS – classroom list====================
+# ====================================================================================PORTAL TERM RESULTS - classroom list====================
 
-@app.route("/portal/<int:school_id>/term_results")
+@app.route("/portal/<signed_id:school_id>/term_results")
 def portal_term_results(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7504,9 +7551,9 @@ def portal_term_results(school_id):
     return render_template("portal_term_results.html", school_id=school_id, classrooms=classrooms, actor_type=actor_type, cycle_meta=cycle_meta)
 
 
-# ====================================================================================PORTAL TERM RESULTS – students in classroom====================
+# ====================================================================================PORTAL TERM RESULTS - students in classroom====================
 
-@app.route("/portal/<int:school_id>/term_results/<int:classroom_id>")
+@app.route("/portal/<signed_id:school_id>/term_results/<signed_id:classroom_id>")
 def portal_term_classroom(school_id, classroom_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7552,9 +7599,9 @@ def portal_term_classroom(school_id, classroom_id):
                            school_id=school_id, classroom=classroom, students=students, actor_type=actor_type, cycle_meta=cycle_meta)
 
 
-# ====================================================================================PORTAL TERM RESULTS – student term report====================
+# ====================================================================================PORTAL TERM RESULTS - student term report====================
 
-@app.route("/portal/<int:school_id>/term_results/<int:classroom_id>/student/<int:student_id>/<student_type>", methods=["GET", "POST"])
+@app.route("/portal/<signed_id:school_id>/term_results/<signed_id:classroom_id>/student/<signed_id:student_id>/<student_type>", methods=["GET", "POST"])
 def portal_term_student(school_id, classroom_id, student_id, student_type):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"teacher", "lecturer"})
@@ -7775,7 +7822,7 @@ def portal_term_student(school_id, classroom_id, student_id, student_type):
                            report_docs=report_docs)
 
 
-@app.route("/portal/report/<int:report_id>")
+@app.route("/portal/report/<signed_id:report_id>")
 def portal_report_view(report_id):
     if not session.get("teacher_id") and not session.get("lecturer_id") and session.get("role") not in ["student", "learner"]:
         flash("Access denied.", "error")
@@ -7825,7 +7872,7 @@ def portal_report_view(report_id):
     return render_template("portal_report_view.html", report_doc=report_doc)
 
 
-@app.route("/student-portal/<int:school_id>")
+@app.route("/student-portal/<signed_id:school_id>")
 def student_portal_dashboard(school_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"student", "learner"})
@@ -7880,7 +7927,7 @@ def student_portal_dashboard(school_id):
     )
 
 
-@app.route("/student-portal/<int:school_id>/classroom/<int:classroom_id>")
+@app.route("/student-portal/<signed_id:school_id>/classroom/<signed_id:classroom_id>")
 def student_portal_classroom(school_id, classroom_id):
     gate = _require_authenticated_school_context(
         school_id, allowed_roles={"student", "learner"})
@@ -8085,7 +8132,7 @@ def _apply_unavailable_redirect(school_id):
     return redirect(url_for("school_page", school_id=school_id, page_slug="admissions"))
 
 
-@app.route("/school/<int:school_id>/apply")
+@app.route("/school/<signed_id:school_id>/apply")
 def apply_instructions(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8102,7 +8149,7 @@ def apply_instructions(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/1", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/apply/step/1", methods=["GET", "POST"])
 def apply_step1(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8170,7 +8217,7 @@ def apply_step1(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/2", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/apply/step/2", methods=["GET", "POST"])
 def apply_step2(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8250,7 +8297,7 @@ def apply_step2(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/3", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/apply/step/3", methods=["GET", "POST"])
 def apply_step3(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8319,7 +8366,7 @@ def apply_step3(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/4", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/apply/step/4", methods=["GET", "POST"])
 def apply_step4(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8356,7 +8403,7 @@ def apply_step4(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/5", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/apply/step/5", methods=["GET", "POST"])
 def apply_step5(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8423,7 +8470,7 @@ def apply_step5(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/6", methods=["GET", "POST"])
+@app.route("/school/<signed_id:school_id>/apply/step/6", methods=["GET", "POST"])
 def apply_step6(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8478,7 +8525,7 @@ def apply_step6(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/step/7")
+@app.route("/school/<signed_id:school_id>/apply/step/7")
 def apply_step7(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8510,7 +8557,7 @@ def apply_step7(school_id):
     )
 
 
-@app.route("/school/<int:school_id>/apply/submit", methods=["POST"])
+@app.route("/school/<signed_id:school_id>/apply/submit", methods=["POST"])
 def apply_submit(school_id):
     school = _get_school_record(school_id)
     if not school:
@@ -8572,7 +8619,7 @@ def apply_submit(school_id):
     return redirect(url_for("apply_confirmation", school_id=school_id, ref=ref))
 
 
-@app.route("/school/<int:school_id>/apply/confirmation/<ref>")
+@app.route("/school/<signed_id:school_id>/apply/confirmation/<ref>")
 def apply_confirmation(school_id, ref):
     school = _get_school_record(school_id)
     if not school:
@@ -8887,7 +8934,7 @@ def _save_application_screening(screening, created_by=None):
 
 # --- Admin: Applications Management ---
 
-@app.route("/admin/school/<int:school_id>/applications")
+@app.route("/admin/school/<signed_id:school_id>/applications")
 def admin_applications(school_id):
     gate = _require_admin_or_school_admin_for_school(school_id)
     if gate:
@@ -8917,7 +8964,7 @@ def admin_applications(school_id):
     )
 
 
-@app.route("/admin/school/<int:school_id>/applications/<ref>", methods=["GET", "POST"])
+@app.route("/admin/school/<signed_id:school_id>/applications/<ref>", methods=["GET", "POST"])
 def admin_application_detail(school_id, ref):
     gate = _require_admin_or_school_admin_for_school(school_id)
     if gate:
@@ -9093,7 +9140,7 @@ def ai_generate_report_comment():
             f"Subject results:\n{subject_lines}\n\n"
             f"Write 2-3 professional, encouraging, and honest sentences as the overall comment. "
             f"Mention strong subjects and areas needing improvement where relevant. "
-            f"Suitable for a formal school report card. Plain sentences only — no bullet points, headings, or quotes."
+            f"Suitable for a formal school report card. Plain sentences only - no bullet points, headings, or quotes."
         )
 
     try:
@@ -10884,7 +10931,7 @@ def api_notifications_unread_count():
         return jsonify({"ok": False, "message": str(error)[:240]}), 500
 
 
-@app.route("/api/notifications/<int:notification_id>/read", methods=["POST"])
+@app.route("/api/notifications/<signed_id:notification_id>/read", methods=["POST"])
 def api_notification_mark_read(notification_id):
     user_id = session.get("user_id")
     if not user_id:
@@ -10966,3 +11013,4 @@ def api_notifications_broadcast():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7000, debug=True)
+
