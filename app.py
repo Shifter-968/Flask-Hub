@@ -1,3 +1,4 @@
+from werkzeug.routing import BaseConverter as _BaseConverter
 from imports import *
 from datetime import timedelta
 import supabase
@@ -1363,7 +1364,6 @@ def inject_school_link_helpers():
 # that dashboard URLs look like /teacher/dashboard/eyJzY2...abc instead of
 # /teacher/dashboard/1.  Plain integer strings (legacy/bookmarked URLs) are
 # still accepted by to_python via _decode_school_ref's fallback.
-from werkzeug.routing import BaseConverter as _BaseConverter
 
 
 class _SchoolRefConverter(_BaseConverter):
@@ -1474,9 +1474,15 @@ def _load_active_announcements(school_id):
 
 def _is_missing_school_column_error(error):
     msg = str(error).lower()
-    return "school_id" in msg and (
-        "column" in msg or "does not exist" in msg or "unknown" in msg
+    # PGRST204 = column not found in schema cache (PostgREST error)
+    missing_col = (
+        "column" in msg
+        or "does not exist" in msg
+        or "unknown" in msg
+        or "schema cache" in msg
+        or "pgrst204" in msg
     )
+    return missing_col
 
 
 def _select_school_scoped(table_name, school_id=None, order_by=None):
