@@ -483,21 +483,25 @@
                         <a href="{{ url_for('schools_directory') }}" class="back-button">{{ tab }}</a>
                     {% endif %}
                 {% else %}
-                    {% set anchor = tab|lower %}
-                    {% if tab == 'Classroom' %}
-                        {% set anchor = 'classrooms' %}
-                    {% elif tab == 'AI' %}
-                        {% set anchor = 'ai-panel' %}
-                    {% elif tab == 'Meetings' %}
-                        {% set anchor = 'meetings' %}
-                    {% elif tab == 'Virtual Calls' %}
-                        {% set anchor = 'virtual-calls' %}
+                    {% if tab == 'Virtual Meetings' %}
+                        <a href="{{ url_for('global_virtual_meetings', school_id=session.school_id) }}">{{ tab }}</a>
+                    {% else %}
+                        {% set anchor = tab|lower %}
+                        {% if tab == 'Classroom' %}
+                            {% set anchor = 'classrooms' %}
+                        {% elif tab == 'AI' %}
+                            {% set anchor = 'ai-panel' %}
+                        {% elif tab == 'Meetings' %}
+                            {% set anchor = 'meetings' %}
+                        {% elif tab == 'Virtual Calls' %}
+                            {% set anchor = 'virtual-calls' %}
+                        {% endif %}
+                        {% set tab_label = tab %}
+                        {% if tab == 'AI' %}
+                            {% set tab_label = '[AI] ' ~ tab %}
+                        {% endif %}
+                        <a href="#{{ anchor }}">{{ tab_label }}</a>
                     {% endif %}
-                    {% set tab_label = tab %}
-                    {% if tab == 'AI' %}
-                        {% set tab_label = '[AI] ' ~ tab %}
-                    {% endif %}
-                    <a href="#{{ anchor }}">{{ tab_label }}</a>
                 {% endif %}
             {% endfor %}
             <a href="{{ url_for('logout') }}" class="logout">Logout</a>

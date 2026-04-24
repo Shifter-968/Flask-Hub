@@ -1,0 +1,130 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Global Virtual Meeting" %}
+{% set role = "Meeting" %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<style>
+    .call-shell {
+        display: grid;
+        gap: 14px;
+        max-width: 1240px;
+    }
+    .call-card {
+        background: #ffffff;
+        border: 1px solid #dbe2f5;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+    .call-meta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: #64748b;
+        font-size: 0.86rem;
+    }
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 0.74rem;
+        font-weight: 800;
+        border: 1px solid;
+    }
+    .pill.live      { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+    .pill.scheduled { color: #92400e; background: #ffedd5; border-color: #fed7aa; }
+    .pill.ended     { color: #334155; background: #e2e8f0; border-color: #cbd5e1; }
+
+    .call-frame-wrap {
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0f172a;
+        min-height: 76vh;
+    }
+    #jitsiContainer {
+        width: 100%;
+        min-height: 76vh;
+    }
+    .call-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 76vh;
+        color: rgba(248,250,252,0.6);
+        font-size: 1rem;
+        gap: 10px;
+    }
+</style>
+
+<script src="https://meet.jit.si/external_api.js"></script>
+
+<div class="call-shell">
+    <section class="call-card">
+        <h1 style="margin:0 0 8px; font-size:1.45rem; color:#0f172a;">{{ call_title }}</h1>
+        <div class="call-meta">
+            <span>School-wide meeting</span>
+            <span>Host: {{ host_name }}</span>
+            <span>Created: {{ (created_at or '')[:16].replace('T', ' ') if created_at else 'N/A' }}</span>
+            <span>Room: {{ room_name }}</span>
+            {% if scheduled_start %}<span>Start: {{ scheduled_start[:16].replace('T', ' ') }}</span>{% endif %}
+            {% if scheduled_end %}<span>End: {{ scheduled_end[:16].replace('T', ' ') }}</span>{% endif %}
+            <span class="pill {{ call_status }}">{{ call_status|upper }}</span>
+        </div>
+        <p style="margin:8px 0 0; color:#475569; font-size:0.88rem;">This room is protected by meeting code and password. Share both privately.</p>
+        <div style="margin-top:12px;">
+            <a href="{{ url_for('global_virtual_meetings', school_id=school_id) }}" class="crystal-button" style="margin:0;">Back to Virtual Meetings</a>
+        </div>
+    </section>
+
+    <section class="call-card" style="padding:0; overflow:hidden;">
+        <div class="call-frame-wrap">
+            <div id="jitsiContainer">
+                <div class="call-loading">
+                    <span style="font-size:1.4rem;">📹</span> Connecting to meeting room...
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const roomName    = {{ room_name | tojson }};
+    const displayName = {{ (session.get('user_name') or session.get('username') or 'Participant') | tojson }};
+    const domain = 'meet.jit.si';
+
+    const options = {
+        roomName: roomName,
+        parentNode: document.getElementById('jitsiContainer'),
+        width: '100%',
+        height: '76vh',
+        configOverwrite: {
+            prejoinPageEnabled: false,
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            disableDeepLinking: true,
+            enableClosePage: false,
+        },
+        interfaceConfigOverwrite: {
+            DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+        },
+        userInfo: { displayName: displayName },
+    };
+
+    try {
+        new JitsiMeetExternalAPI(domain, options);
+    } catch (err) {
+        document.getElementById('jitsiContainer').innerHTML =
+            '<div class="call-loading" style="flex-direction:column;gap:8px;">' +
+            '<span style="font-size:1.4rem;">⚠️</span>' +
+            '<span>Could not load the meeting room. Please allow camera/microphone access and reload.</span>' +
+            '</div>';
+    }
+})();
+</script>
+{% endblock %}

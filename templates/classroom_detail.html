@@ -334,7 +334,7 @@
 
         <section class="post-form" id="meetings">
             <h2>Virtual Classroom Stream</h2>
-            <p style="margin:0 0 10px; color:#475569;">Create secure call links for group study, project check-ins, and live teacher sessions. Everyone in class can create and join with password.</p>
+            <p style="margin:0 0 10px; color:#475569;">Create secure call links for group study, project check-ins, and live teacher sessions. Share the meeting code and password privately with participants.</p>
 
             <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:grid; gap:10px; margin-bottom:14px;">
                 <input type="hidden" name="action" value="create_virtual_call">
@@ -351,6 +351,13 @@
                     </div>
                 </div>
                 <button type="submit" class="crystal-button" style="margin:0; width:max-content;">Create Call Link</button>
+            </form>
+
+            <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+                <input type="hidden" name="action" value="join_virtual_call">
+                <input type="text" name="call_code" placeholder="Meeting code" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:170px; text-transform:uppercase;" required>
+                <input type="password" name="call_password" placeholder="Enter call password" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:220px;" required>
+                <button type="submit" class="crystal-button" style="margin:0; padding:9px 16px;">Join Call</button>
             </form>
 
             {% if virtual_calls %}
@@ -379,6 +386,12 @@
                                 {% if call.scheduled_end %} | End: {{ call.scheduled_end[:16].replace('T', ' ') }}{% endif %}
                             </div>
                             {% endif %}
+                            {% if call.meeting_code %}
+                            <div style="font-size:0.78rem; color:#1d4ed8; margin-top:3px;">Meeting code: {{ call.meeting_code }}</div>
+                            {% endif %}
+                            {% if call.is_host and call.creator_password %}
+                            <div style="font-size:0.78rem; color:#7c2d12; margin-top:3px;">Your password: {{ call.creator_password }}</div>
+                            {% endif %}
                             <div style="font-size:0.78rem; color:#64748b; margin-top:3px;">Participants: {{ call.participant_count or 0 }} | Join events: {{ call.join_events or 0 }}</div>
                         </div>
                         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -393,6 +406,7 @@
                     <form method="post" action="{{ url_for('classroom_detail', classroom_id=classroom.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
                         <input type="hidden" name="action" value="join_virtual_call">
                         <input type="hidden" name="call_post_id" value="{{ call.post_id }}">
+                        <input type="text" name="call_code" placeholder="Meeting code" value="{{ call.meeting_code or '' }}" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:170px; text-transform:uppercase;" required>
                         <input type="password" name="call_password" placeholder="Enter call password" style="padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; min-width:220px;" required>
                         <button type="submit" class="crystal-button" style="margin:0; padding:9px 16px;">Join Call</button>
                     </form>

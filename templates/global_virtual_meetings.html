@@ -1,0 +1,94 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Global Virtual Meetings" %}
+{% set role = (session.get('role') or 'User')|title %}
+{% set tabs = ["Back to Dashboard"] %}
+
+{% block content %}
+<section class="dashboard-section panel-active" id="virtual-meetings" style="background:#ffffff;border:1px solid #dbe2f5;border-radius:16px;padding:20px;box-shadow:0 12px 30px rgba(15,23,42,0.08);">
+    <h1 style="margin:0 0 6px;color:#0f172a;">Virtual Meetings</h1>
+    <p style="margin:0 0 14px;color:#475569;">Create school-wide meetings and share only the meeting code and password. Meetings stay hidden from other users unless they join with valid credentials.</p>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;">
+        <article style="border:1px solid #dbeafe;background:#f8fbff;border-radius:12px;padding:14px;">
+            <h2 style="margin:0 0 10px;color:#1e3a8a;font-size:1.05rem;">Create Meeting</h2>
+            <form method="post" action="{{ url_for('global_virtual_meetings', school_id=school_id) }}" style="display:grid;gap:10px;">
+                <input type="hidden" name="action" value="create_global_virtual_meeting">
+                <input type="text" name="meeting_title" placeholder="Meeting title" style="width:100%;padding:12px;border-radius:10px;border:1px solid #cbd5e1;" required>
+                <input type="password" name="meeting_password" placeholder="Set meeting password" style="width:100%;padding:12px;border-radius:10px;border:1px solid #cbd5e1;" minlength="4" required>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-size:0.84rem;color:#475569;">Scheduled Start (optional)</label>
+                        <input type="datetime-local" name="meeting_scheduled_start" style="width:100%;padding:12px;border-radius:10px;border:1px solid #cbd5e1;">
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-size:0.84rem;color:#475569;">Scheduled End (optional)</label>
+                        <input type="datetime-local" name="meeting_scheduled_end" style="width:100%;padding:12px;border-radius:10px;border:1px solid #cbd5e1;">
+                    </div>
+                </div>
+                <button type="submit" class="crystal-button" style="margin:0;width:max-content;">Create Meeting</button>
+            </form>
+        </article>
+
+        <article style="border:1px solid #dcfce7;background:#f0fdf4;border-radius:12px;padding:14px;">
+            <h2 style="margin:0 0 10px;color:#166534;font-size:1.05rem;">Join Meeting</h2>
+            <form method="post" action="{{ url_for('global_virtual_meetings', school_id=school_id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <input type="hidden" name="action" value="join_global_virtual_meeting">
+                <input type="text" name="meeting_code" placeholder="Meeting code" style="padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;min-width:170px;text-transform:uppercase;" required>
+                <input type="password" name="meeting_password" placeholder="Meeting password" style="padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;min-width:220px;" required>
+                <button type="submit" class="crystal-button" style="margin:0;padding:9px 16px;">Join Meeting</button>
+            </form>
+        </article>
+    </div>
+
+    {% if meetings %}
+    <div style="display:grid;gap:10px;margin-top:14px;">
+        {% for meeting in meetings %}
+        <article style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#ffffff;">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+                <div>
+                    <strong style="color:#0f172a;">{{ meeting.title }}</strong>
+                    <div style="font-size:0.84rem;color:#64748b;margin-top:4px;">Host: {{ meeting.created_by }}{% if meeting.created_at %} | Created: {{ meeting.created_at[:16].replace('T', ' ') }}{% endif %}</div>
+                    {% if meeting.meeting_code %}
+                    <div style="font-size:0.78rem;color:#1d4ed8;margin-top:3px;">Meeting code: {{ meeting.meeting_code }}</div>
+                    {% endif %}
+                    {% if meeting.is_host and meeting.creator_password %}
+                    <div style="font-size:0.78rem;color:#7c2d12;margin-top:3px;">Your password: {{ meeting.creator_password }}</div>
+                    {% endif %}
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    {% if meeting.status == 'live' %}
+                    <span style="font-size:0.74rem;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;">Live</span>
+                    {% elif meeting.status == 'scheduled' %}
+                    <span style="font-size:0.74rem;font-weight:700;color:#92400e;background:#ffedd5;border:1px solid #fed7aa;border-radius:999px;padding:3px 10px;">Scheduled</span>
+                    {% else %}
+                    <span style="font-size:0.74rem;font-weight:700;color:#334155;background:#e2e8f0;border:1px solid #cbd5e1;border-radius:999px;padding:3px 10px;">Ended</span>
+                    {% endif %}
+                    {% if meeting.status != 'ended' %}
+                    <a href="{{ url_for('global_virtual_meeting_room', school_id=school_id, meeting_id=meeting.id) }}" class="crystal-button" style="margin:0;padding:7px 14px;font-size:0.84rem;">Open Room</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if meeting.is_host and meeting.status != 'ended' %}
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <form method="post" action="{{ url_for('global_virtual_meetings', school_id=school_id) }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <input type="hidden" name="action" value="rotate_global_virtual_meeting_password">
+                    <input type="hidden" name="meeting_id" value="{{ meeting.id }}">
+                    <input type="password" name="new_meeting_password" minlength="4" placeholder="New password" style="padding:8px 10px;border-radius:10px;border:1px solid #cbd5e1;min-width:180px;" required>
+                    <button type="submit" class="crystal-button" style="margin:0;padding:8px 14px;">Rotate Password</button>
+                </form>
+                <form method="post" action="{{ url_for('global_virtual_meetings', school_id=school_id) }}" style="display:flex;">
+                    <input type="hidden" name="action" value="end_global_virtual_meeting">
+                    <input type="hidden" name="meeting_id" value="{{ meeting.id }}">
+                    <button type="submit" class="crystal-button" style="margin:0;padding:8px 14px;background:#dc2626;border-color:#dc2626;color:#fff;">End Meeting</button>
+                </form>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:14px 0;">No meetings visible yet. Create one or join using meeting code + password.</div>
+    {% endif %}
+</section>
+{% endblock %}

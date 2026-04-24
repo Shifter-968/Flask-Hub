@@ -36,6 +36,7 @@ except ImportError:
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallbacksecret")
 SCHOOL_LINK_TOKEN_SALT = "school-link-v1"
+MEETING_PASSWORD_TOKEN_SALT = "meeting-password-v1"
 
 
 def _wants_json_response():
@@ -1278,6 +1279,33 @@ def _parse_int(value):
 
 def _school_link_serializer():
     return URLSafeSerializer(app.secret_key, salt=SCHOOL_LINK_TOKEN_SALT)
+
+
+def _meeting_password_serializer():
+    return URLSafeSerializer(app.secret_key, salt=MEETING_PASSWORD_TOKEN_SALT)
+
+
+def _seal_meeting_password(plain_text):
+    raw = (plain_text or "").strip()
+    if not raw:
+        return ""
+    try:
+        return _meeting_password_serializer().dumps({"p": raw})
+    except Exception:
+        return ""
+
+
+def _reveal_meeting_password(sealed_text):
+    token = (sealed_text or "").strip()
+    if not token:
+        return ""
+    try:
+        payload = _meeting_password_serializer().loads(token)
+    except Exception:
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    return (payload.get("p") or "").strip()
 
 
 def _encode_school_ref(school_id):
@@ -4374,7 +4402,10 @@ def lecturer_dashboard(school_id):
         "*").eq("school_id", school_id).execute().data
 
     # Pull virtual calls for all classrooms in this school
-    dashboard_virtual_calls = _load_dashboard_virtual_calls(classrooms)
+    dashboard_virtual_calls = _load_dashboard_virtual_calls(
+        classrooms,
+        actor_id=str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or ""),
+    )
 
     return render_template(
         "lecturer_dashboard.html",
@@ -4445,7 +4476,7 @@ def learner_dashboard(school_id):
 # ================================================================================================TEACHER DASHBOARD=======
 
 
-def _load_dashboard_virtual_calls(classrooms):
+def _load_dashboard_virtual_calls(classrooms, actor_id=""):
     """Fetch all virtual calls across a list of classrooms, enriched with classroom name."""
     if not classrooms:
         return []
@@ -4463,8 +4494,15 @@ def _load_dashboard_virtual_calls(classrooms):
         payload = _virtual_call_payload_decode(post.get("content"))
         if not payload:
             continue
+        post_id = post.get("id")
+        host_id = str(payload.get("created_by_id") or "")
+        actor_key = str(actor_id or "")
+        is_host = bool(host_id and actor_key and host_id == actor_key)
+        has_access = bool(session.get(f"virtual_call_access_{post_id}"))
+        if not (is_host or has_access):
+            continue
         result.append({
-            "post_id": post.get("id"),
+            "post_id": post_id,
             "classroom_id": post.get("classroom_id"),
             "classroom_name": classroom_map.get(post.get("classroom_id"), "Classroom"),
             "title": payload.get("title") or "Classroom Call",
@@ -4473,6 +4511,8 @@ def _load_dashboard_virtual_calls(classrooms):
             "scheduled_start": payload.get("scheduled_start"),
             "scheduled_end": payload.get("scheduled_end"),
             "status": _virtual_call_status(payload),
+            "meeting_code": (payload.get("meeting_code") or "").strip(),
+            "is_host": is_host,
         })
     result.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
     return result
@@ -4497,7 +4537,10 @@ def teacher_dashboard(school_id):
         "*").eq("school_id", school_id).execute().data
 
     # Pull virtual calls for all classrooms in this school
-    dashboard_virtual_calls = _load_dashboard_virtual_calls(classrooms)
+    dashboard_virtual_calls = _load_dashboard_virtual_calls(
+        classrooms,
+        actor_id=str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or ""),
+    )
 
     return render_template(
         "teacher_dashboard.html",
@@ -4507,6 +4550,227 @@ def teacher_dashboard(school_id):
         classrooms=classrooms,
         dashboard_virtual_calls=dashboard_virtual_calls,
         instructor_ai_enabled=INSTRUCTOR_AI_PREMIUM_ENABLED,
+    )
+
+
+@app.route("/virtual-meetings/<int:school_id>", methods=["GET", "POST"])
+def global_virtual_meetings(school_id):
+    gate = _require_authenticated_school_context(
+        school_id,
+        allowed_roles={"teacher", "lecturer", "student", "learner", "parent", "staff", "school_admin"},
+    )
+    if gate:
+        return gate
+
+    actor_id = str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or "")
+    actor_name = session.get("user_name") or session.get("username") or (session.get("role") or "member").title()
+    actor_role = session.get("role") or "member"
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip().lower()
+
+        if action == "create_global_virtual_meeting":
+            title = (request.form.get("meeting_title") or "").strip()
+            password = (request.form.get("meeting_password") or "").strip()
+            scheduled_start_raw = (request.form.get("meeting_scheduled_start") or "").strip()
+            scheduled_end_raw = (request.form.get("meeting_scheduled_end") or "").strip()
+            if not title:
+                flash("Meeting title is required.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            if len(password) < 4:
+                flash("Meeting password must be at least 4 characters.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+            start_dt = _virtual_call_parse_iso(scheduled_start_raw)
+            end_dt = _virtual_call_parse_iso(scheduled_end_raw)
+            if start_dt and end_dt and end_dt <= start_dt:
+                flash("Scheduled end time must be after start time.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+            meeting_code = _virtual_meeting_code()
+            room_name = f"flaskhub-global-{school_id}-{uuid.uuid4().hex[:8]}"
+            row = {
+                "school_id": school_id,
+                "title": title,
+                "room_name": room_name,
+                "meeting_code": meeting_code,
+                "password_hash": _virtual_call_password_hash(password),
+                "password_sealed": _seal_meeting_password(password),
+                "created_by": actor_name,
+                "created_by_role": actor_role,
+                "created_by_id": actor_id,
+                "scheduled_start": start_dt.isoformat() if start_dt else None,
+                "scheduled_end": end_dt.isoformat() if end_dt else None,
+                "created_at": datetime.utcnow().isoformat(),
+                "ended_at": None,
+            }
+            try:
+                resp = supabase.table("global_virtual_meetings").insert(row).execute()
+                created = resp.data[0] if resp and resp.data else None
+                created_id = created.get("id") if isinstance(created, dict) else None
+                if created_id:
+                    session[f"global_virtual_meeting_access_{created_id}"] = datetime.utcnow().isoformat()
+                flash(f"Global meeting created. Meeting code: {meeting_code}", "success")
+            except Exception:
+                flash("Unable to create global meeting right now. Ensure global_virtual_meetings table exists.", "error")
+            return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+        if action == "join_global_virtual_meeting":
+            meeting_code = (request.form.get("meeting_code") or "").strip().upper()
+            password = (request.form.get("meeting_password") or "").strip()
+            if not meeting_code:
+                flash("Meeting code is required.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            if not password:
+                flash("Meeting password is required.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+            try:
+                resp = supabase.table("global_virtual_meetings").select(
+                    "id,school_id,title,room_name,password_hash,meeting_code,ended_at,created_by_id"
+                ).eq("school_id", school_id).order("created_at", desc=True).limit(300).execute()
+                rows = resp.data or []
+            except Exception:
+                rows = []
+
+            meeting = None
+            for row in rows:
+                if (row.get("meeting_code") or "").strip().upper() == meeting_code:
+                    meeting = row
+                    break
+
+            if not meeting:
+                flash("Meeting not found for this code.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+            if _virtual_call_parse_iso(meeting.get("ended_at") or "") is not None:
+                flash("This meeting has ended.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+            if _virtual_call_password_hash(password) != (meeting.get("password_hash") or ""):
+                flash("Incorrect meeting password.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+            meeting_id = meeting.get("id")
+            session[f"global_virtual_meeting_access_{meeting_id}"] = datetime.utcnow().isoformat()
+            return redirect(url_for("global_virtual_meeting_room", school_id=school_id, meeting_id=meeting_id))
+
+        if action == "end_global_virtual_meeting":
+            meeting_id = _parse_int(request.form.get("meeting_id"))
+            if meeting_id is None:
+                flash("Invalid meeting.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            try:
+                resp = supabase.table("global_virtual_meetings").select(
+                    "id,school_id,created_by_id,ended_at"
+                ).eq("id", meeting_id).eq("school_id", school_id).limit(1).execute()
+                meeting = resp.data[0] if resp and resp.data else None
+            except Exception:
+                meeting = None
+            if not meeting:
+                flash("Meeting not found.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            host_id = str(meeting.get("created_by_id") or "")
+            if host_id and host_id != actor_id:
+                flash("Only the host can end this meeting.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            try:
+                supabase.table("global_virtual_meetings").update({
+                    "ended_at": datetime.utcnow().isoformat(),
+                }).eq("id", meeting_id).eq("school_id", school_id).execute()
+                flash("Meeting ended.", "success")
+            except Exception:
+                flash("Unable to end meeting.", "error")
+            return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+        if action == "rotate_global_virtual_meeting_password":
+            meeting_id = _parse_int(request.form.get("meeting_id"))
+            new_password = (request.form.get("new_meeting_password") or "").strip()
+            if meeting_id is None:
+                flash("Invalid meeting.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            if len(new_password) < 4:
+                flash("New meeting password must be at least 4 characters.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            try:
+                resp = supabase.table("global_virtual_meetings").select(
+                    "id,school_id,created_by_id"
+                ).eq("id", meeting_id).eq("school_id", school_id).limit(1).execute()
+                meeting = resp.data[0] if resp and resp.data else None
+            except Exception:
+                meeting = None
+            if not meeting:
+                flash("Meeting not found.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            host_id = str(meeting.get("created_by_id") or "")
+            if host_id and host_id != actor_id:
+                flash("Only the host can rotate this password.", "error")
+                return redirect(url_for("global_virtual_meetings", school_id=school_id))
+            try:
+                supabase.table("global_virtual_meetings").update({
+                    "password_hash": _virtual_call_password_hash(new_password),
+                    "password_sealed": _seal_meeting_password(new_password),
+                    "password_rotated_at": datetime.utcnow().isoformat(),
+                }).eq("id", meeting_id).eq("school_id", school_id).execute()
+                session[f"global_virtual_meeting_access_{meeting_id}"] = datetime.utcnow().isoformat()
+                flash("Meeting password updated.", "success")
+            except Exception:
+                flash("Unable to update meeting password.", "error")
+            return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+        flash("Unsupported meeting action.", "error")
+        return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+    meetings = _load_global_virtual_meetings(school_id, actor_id=actor_id)
+    return render_template(
+        "global_virtual_meetings.html",
+        school_id=school_id,
+        meetings=meetings,
+    )
+
+
+@app.route("/virtual-meetings/<int:school_id>/call/<int:meeting_id>")
+def global_virtual_meeting_room(school_id, meeting_id):
+    gate = _require_authenticated_school_context(
+        school_id,
+        allowed_roles={"teacher", "lecturer", "student", "learner", "parent", "staff", "school_admin"},
+    )
+    if gate:
+        return gate
+    if not session.get(f"global_virtual_meeting_access_{meeting_id}"):
+        flash("Enter meeting code and password first.", "error")
+        return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+    try:
+        resp = supabase.table("global_virtual_meetings").select(
+            "id,school_id,title,room_name,created_by,created_by_id,created_at,scheduled_start,scheduled_end,ended_at"
+        ).eq("id", meeting_id).eq("school_id", school_id).limit(1).execute()
+        meeting = resp.data[0] if resp and resp.data else None
+    except Exception:
+        meeting = None
+    if not meeting:
+        flash("Meeting not found.", "error")
+        return redirect(url_for("global_virtual_meetings", school_id=school_id))
+
+    actor_id = str(session.get("user_id") or session.get("teacher_id") or session.get("lecturer_id") or "")
+    host_id = str(meeting.get("created_by_id") or "")
+    is_host = bool(host_id and actor_id and host_id == actor_id)
+    call_status = _virtual_call_status({
+        "scheduled_start": meeting.get("scheduled_start"),
+        "ended_at": meeting.get("ended_at"),
+    })
+    return render_template(
+        "virtual_global_call.html",
+        school_id=school_id,
+        meeting_id=meeting_id,
+        call_title=meeting.get("title") or "Global Meeting",
+        room_name=meeting.get("room_name"),
+        host_name=meeting.get("created_by") or "Host",
+        created_at=meeting.get("created_at"),
+        scheduled_start=meeting.get("scheduled_start"),
+        scheduled_end=meeting.get("scheduled_end"),
+        call_status=call_status,
+        is_call_host=is_host,
     )
 
 # ===================================================================CLASSROOM DETAILS=====
@@ -4530,6 +4794,10 @@ def _virtual_call_payload_decode(content_text):
 
 def _virtual_call_password_hash(plain_text):
     return hashlib.sha256((plain_text or "").encode("utf-8")).hexdigest()
+
+
+def _virtual_meeting_code():
+    return uuid.uuid4().hex[:8].upper()
 
 
 def _virtual_call_payload_encode(payload):
@@ -4560,6 +4828,46 @@ def _virtual_call_status(payload):
         if started_at > now:
             return "scheduled"
     return "live"
+
+
+def _load_global_virtual_meetings(school_id, actor_id=""):
+    school_id_int = _parse_int(school_id)
+    if school_id_int is None:
+        return []
+    try:
+        resp = supabase.table("global_virtual_meetings").select(
+            "id,school_id,title,room_name,password_hash,password_sealed,meeting_code,created_by,created_by_role,created_by_id,created_at,scheduled_start,scheduled_end,ended_at"
+        ).eq("school_id", school_id_int).order("created_at", desc=True).limit(300).execute()
+        rows = resp.data or []
+    except Exception:
+        return []
+
+    actor_key = str(actor_id or "")
+    meetings = []
+    for row in rows:
+        host_id = str(row.get("created_by_id") or "")
+        meeting_id = row.get("id")
+        is_host = bool(host_id and actor_key and host_id == actor_key)
+        has_access = bool(session.get(f"global_virtual_meeting_access_{meeting_id}"))
+        if not (is_host or has_access):
+            continue
+        payload = {
+            "scheduled_start": row.get("scheduled_start"),
+            "ended_at": row.get("ended_at"),
+        }
+        meetings.append({
+            "id": meeting_id,
+            "title": row.get("title") or "Global Meeting",
+            "meeting_code": (row.get("meeting_code") or "").strip(),
+            "created_by": row.get("created_by") or "Host",
+            "created_at": row.get("created_at"),
+            "scheduled_start": row.get("scheduled_start"),
+            "scheduled_end": row.get("scheduled_end"),
+            "status": _virtual_call_status(payload),
+            "is_host": is_host,
+            "creator_password": _reveal_meeting_password(row.get("password_sealed") or "") if is_host else "",
+        })
+    return meetings
 
 
 def _virtual_call_get_post(classroom_id, call_post_id):
@@ -5057,11 +5365,14 @@ def classroom_detail(classroom_id):
                 flash("Scheduled end time must be after start time.", "error")
                 return redirect(url_for("classroom_detail", classroom_id=classroom_id))
 
+            meeting_code = _virtual_meeting_code()
             room_name = f"flaskhub-{classroom_id}-{uuid.uuid4().hex[:8]}"
             payload = {
                 "title": call_title,
                 "room_name": room_name,
+                "meeting_code": meeting_code,
                 "password_hash": _virtual_call_password_hash(call_password),
+                "password_sealed": _seal_meeting_password(call_password),
                 "created_by": author_name,
                 "created_by_role": role_name,
                 "created_by_id": str(effective_user_id or ""),
@@ -5081,10 +5392,14 @@ def classroom_detail(classroom_id):
                 "created_at": datetime.utcnow().isoformat(),
             }
             try:
-                supabase.table("classroom_posts").insert(
+                insert_resp = supabase.table("classroom_posts").insert(
                     post_payload).execute()
+                created_post = insert_resp.data[0] if insert_resp and insert_resp.data else None
+                created_post_id = created_post.get("id") if isinstance(created_post, dict) else None
+                if created_post_id:
+                    session[f"virtual_call_access_{created_post_id}"] = datetime.utcnow().isoformat()
                 flash(
-                    "Virtual classroom call link created. Share the password with participants.", "success")
+                    f"Virtual classroom call created. Meeting code: {meeting_code}. Share code + password with participants.", "success")
             except Exception:
                 flash("Unable to create virtual call link right now.", "error")
 
@@ -5093,20 +5408,35 @@ def classroom_detail(classroom_id):
                 flash("Join the classroom first before joining a virtual call.", "error")
                 return redirect(url_for("classroom_detail", classroom_id=classroom_id))
             call_post_id = _parse_int(request.form.get("call_post_id"))
+            call_code = (request.form.get("call_code") or "").strip().upper()
             call_password = (request.form.get("call_password") or "").strip()
-            if call_post_id is None:
-                flash("Invalid call link.", "error")
+            if call_post_id is None and not call_code:
+                flash("Enter meeting code to join.", "error")
                 return redirect(url_for("classroom_detail", classroom_id=classroom_id))
             if not call_password:
                 flash("Enter the call password to join.", "error")
                 return redirect(url_for("classroom_detail", classroom_id=classroom_id))
 
-            try:
-                call_resp = supabase.table("classroom_posts").select(
-                    "id,classroom_id,content,created_at,author_name").eq("id", call_post_id).eq("classroom_id", classroom_id).limit(1).execute()
-                call_post = call_resp.data[0] if call_resp and call_resp.data else None
-            except Exception:
-                call_post = None
+            call_post = None
+            if call_post_id is not None:
+                try:
+                    call_resp = supabase.table("classroom_posts").select(
+                        "id,classroom_id,content,created_at,author_name").eq("id", call_post_id).eq("classroom_id", classroom_id).limit(1).execute()
+                    call_post = call_resp.data[0] if call_resp and call_resp.data else None
+                except Exception:
+                    call_post = None
+            elif call_code:
+                try:
+                    call_resp = supabase.table("classroom_posts").select(
+                        "id,classroom_id,content,created_at,author_name").eq("classroom_id", classroom_id).eq("role", "virtual_call").order("created_at", desc=True).limit(300).execute()
+                    for row in (call_resp.data or []):
+                        payload = _virtual_call_payload_decode(row.get("content"))
+                        if payload and (payload.get("meeting_code") or "").strip().upper() == call_code:
+                            call_post = row
+                            call_post_id = row.get("id")
+                            break
+                except Exception:
+                    call_post = None
 
             if not call_post:
                 flash("Call link not found.", "error")
@@ -5193,8 +5523,10 @@ def classroom_detail(classroom_id):
 
             payload["password_hash"] = _virtual_call_password_hash(
                 new_password)
+            payload["password_sealed"] = _seal_meeting_password(new_password)
             payload["password_rotated_at"] = datetime.utcnow().isoformat()
             if _virtual_call_update_post_payload(classroom_id, call_post_id, payload):
+                session[f"virtual_call_access_{call_post_id}"] = datetime.utcnow().isoformat()
                 flash("Call password updated.", "success")
             else:
                 flash("Unable to update call password.", "error")
@@ -5447,18 +5779,25 @@ def classroom_detail(classroom_id):
         for post in stream_posts:
             call_payload = _virtual_call_payload_decode(post.get("content"))
             if call_payload:
+                post_id = post.get("id")
                 created_by_id = str(call_payload.get("created_by_id") or "")
                 status = _virtual_call_status(call_payload)
+                is_host = bool(created_by_id and current_actor_id and created_by_id == current_actor_id)
+                has_access = bool(session.get(f"virtual_call_access_{post_id}"))
+                if not (is_host or has_access):
+                    continue
                 virtual_calls.append({
-                    "post_id": post.get("id"),
+                    "post_id": post_id,
                     "title": call_payload.get("title") or "Classroom Call",
                     "room_name": call_payload.get("room_name"),
+                    "meeting_code": (call_payload.get("meeting_code") or "").strip(),
                     "created_by": call_payload.get("created_by") or post.get("author_name") or "Host",
                     "created_at": call_payload.get("created_at") or post.get("created_at"),
                     "scheduled_start": call_payload.get("scheduled_start"),
                     "scheduled_end": call_payload.get("scheduled_end"),
                     "status": status,
-                    "is_host": bool(created_by_id and current_actor_id and created_by_id == current_actor_id),
+                    "is_host": is_host,
+                    "creator_password": _reveal_meeting_password(call_payload.get("password_sealed") or "") if is_host else "",
                     "session_summary": (call_payload.get("session_summary") or "").strip(),
                     "session_action_items": call_payload.get("session_action_items") or [],
                     "session_followups": call_payload.get("session_followups") or [],
@@ -5637,6 +5976,8 @@ def classroom_virtual_call(classroom_id, call_post_id):
         call_post_id=call_post_id,
         call_title=call_payload.get("title") or "Virtual Classroom Call",
         room_name=call_payload.get("room_name"),
+        meeting_code=(call_payload.get("meeting_code") or "").strip(),
+        creator_password=_reveal_meeting_password(call_payload.get("password_sealed") or "") if is_host else "",
         host_name=call_payload.get("created_by") or call_post.get(
             "author_name") or "Host",
         created_at=call_payload.get(
@@ -5730,8 +6071,10 @@ def classroom_virtual_call_host_control(classroom_id, call_post_id):
             return redirect(url_for("classroom_virtual_call", classroom_id=classroom_id, call_post_id=call_post_id))
         call_payload["password_hash"] = _virtual_call_password_hash(
             new_password)
+        call_payload["password_sealed"] = _seal_meeting_password(new_password)
         call_payload["password_rotated_at"] = datetime.utcnow().isoformat()
         if _virtual_call_update_post_payload(classroom_id, call_post_id, call_payload):
+            session[f"virtual_call_access_{call_post_id}"] = datetime.utcnow().isoformat()
             flash("Meeting password rotated.", "success")
         else:
             flash("Could not rotate meeting password.", "error")

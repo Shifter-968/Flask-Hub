@@ -98,6 +98,8 @@
             <span>Host: {{ host_name }}</span>
             <span>Created: {{ (created_at or '')[:16].replace('T', ' ') if created_at else 'N/A' }}</span>
             <span>Room: {{ room_name }}</span>
+            {% if meeting_code %}<span>Meeting code: {{ meeting_code }}</span>{% endif %}
+            {% if is_call_host and creator_password %}<span>Your password: {{ creator_password }}</span>{% endif %}
             {% if scheduled_start %}<span>Start: {{ scheduled_start[:16].replace('T', ' ') }}</span>{% endif %}
             {% if scheduled_end %}<span>End: {{ scheduled_end[:16].replace('T', ' ') }}</span>{% endif %}
             <span class="pill {{ call_status }}">{{ call_status|upper }}</span>
