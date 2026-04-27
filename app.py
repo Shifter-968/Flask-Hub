@@ -42,6 +42,42 @@ SCHOOL_LINK_TOKEN_SALT = "school-link-v1"
 MEETING_PASSWORD_TOKEN_SALT = "meeting-password-v1"
 
 
+# URL converters — registered early so all routes can reference them.
+# The to_python/to_url methods call helper functions (_decode_signed_id etc.)
+# which are defined later; that is fine because the methods are only *called*
+# at request time, by which point all helpers are already defined.
+class _SchoolRefConverter(_BaseConverter):
+    regex = r"[^/]+"
+
+    def to_python(self, value):
+        result = _decode_school_ref(value)
+        if result is None:
+            raise _RoutingValidationError()
+        return result
+
+    def to_url(self, value):
+        encoded = _encode_school_ref(value)
+        return encoded if encoded else str(value)
+
+
+class _SignedIdConverter(_BaseConverter):
+    regex = r"[^/]+"
+
+    def to_python(self, value):
+        result = _decode_signed_id(value)
+        if result is None:
+            raise _RoutingValidationError()
+        return result
+
+    def to_url(self, value):
+        encoded = _encode_signed_id(value)
+        return encoded if encoded else str(value)
+
+
+app.url_map.converters["school_ref"] = _SchoolRefConverter
+app.url_map.converters["signed_id"] = _SignedIdConverter
+
+
 def _wants_json_response():
     if request.path.startswith("/api/") or request.path.startswith("/ai/"):
         return True
@@ -1390,45 +1426,6 @@ def inject_school_link_helpers():
         "school_public_url": _school_public_url,
         "school_ref_token": _encode_school_ref,
     }
-
-
-# School-ref URL converter.
-# Encodes school IDs as itsdangerous signed tokens inside URL path segments so
-# that dashboard URLs look like /teacher/dashboard/eyJzY2...abc instead of
-# /teacher/dashboard/1.  Plain integer strings (legacy/bookmarked URLs) are
-# still accepted by to_python via _decode_school_ref's fallback.
-
-
-class _SchoolRefConverter(_BaseConverter):
-    regex = r"[^/]+"
-
-    def to_python(self, value):
-        result = _decode_school_ref(value)
-        if result is None:
-            raise _RoutingValidationError()
-        return result
-
-    def to_url(self, value):
-        encoded = _encode_school_ref(value)
-        return encoded if encoded else str(value)
-
-
-class _SignedIdConverter(_BaseConverter):
-    regex = r"[^/]+"
-
-    def to_python(self, value):
-        result = _decode_signed_id(value)
-        if result is None:
-            raise _RoutingValidationError()
-        return result
-
-    def to_url(self, value):
-        encoded = _encode_signed_id(value)
-        return encoded if encoded else str(value)
-
-
-app.url_map.converters["school_ref"] = _SchoolRefConverter
-app.url_map.converters["signed_id"] = _SignedIdConverter
 
 
 def _current_school_dashboard_url():
@@ -11013,4 +11010,3 @@ def api_notifications_broadcast():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7000, debug=True)
-

@@ -27,6 +27,13 @@ CREATE TABLE IF NOT EXISTS performance_records (
 CREATE INDEX IF NOT EXISTS idx_perf_student_class
     ON performance_records(student_id, student_type, classroom_id);
 
+-- Backfill columns for existing deployments where performance_records was created
+-- before cycle/term/year fields were introduced.
+ALTER TABLE performance_records
+    ADD COLUMN IF NOT EXISTS cycle_label VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS term_label VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS academic_year VARCHAR(20);
+
 CREATE INDEX IF NOT EXISTS idx_perf_cycle
     ON performance_records(cycle_label, academic_year);
 
@@ -53,6 +60,12 @@ CREATE TABLE IF NOT EXISTS term_results (
 
 CREATE INDEX IF NOT EXISTS idx_term_student_class
     ON term_results(student_id, student_type, classroom_id);
+
+-- Backfill columns for existing deployments where term_results was created
+-- before term/year fields were introduced.
+ALTER TABLE term_results
+    ADD COLUMN IF NOT EXISTS term_label VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS academic_year VARCHAR(20);
 
 CREATE INDEX IF NOT EXISTS idx_term_cycle
     ON term_results(term_label, academic_year);
