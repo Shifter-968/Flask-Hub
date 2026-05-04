@@ -84,6 +84,7 @@
       {% endif %}
       <a class="btn" href="{{ url_for('admin_manage_announcements', school_id=school.id) }}">Announcements</a>
       <a class="btn" href="{{ url_for('admin_manage_events', school_id=school.id) }}">Events</a>
+      <a class="btn" href="{{ url_for('admin_manage_finance', school_id=school.id) }}">Finance</a>
       <a class="btn" href="{{ url_for('school_page', school_id=school.id, page_slug='home') }}">School Site</a>
       <a class="btn" href="{{ url_for('user_profile') }}">My Profile</a>
       <a class="btn" href="{{ url_for('logout') }}">Logout</a>
@@ -176,6 +177,11 @@
       <div class="mc-icon">🎉</div>
       <h3>Events</h3>
       <p>Publish upcoming school events and schedule important dates.</p>
+    </a>
+    <a class="module-card" href="{{ url_for('admin_manage_finance', school_id=school.id) }}">
+      <div class="mc-icon">Finance</div>
+      <h3>Fees & Payments</h3>
+      <p>Manage student fee ledgers, post charges and payments, and send automated reminders.</p>
     </a>
   </div>
 </main>

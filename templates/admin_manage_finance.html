@@ -1,0 +1,271 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Finance Management" %}
+{% set role = "School Admin" %}
+{% set tabs = ["Overview", "Accounts", "Transactions"] %}
+
+{% block content %}
+<style>
+  .panel {
+    background: #ffffff;
+    border: 1px solid #d9e0f2;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
+  }
+  .panel h2 { margin: 0 0 12px; font-size: 1.2rem; color: #24325f; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card {
+    border: 1px solid #dbe2f5;
+    border-radius: 10px;
+    background: #f9fbff;
+    padding: 12px;
+  }
+  .card-title { font-weight: 800; color: #1e3a8a; }
+  .meta { font-size: 0.8rem; color: #64748b; }
+  .balance { margin-top: 8px; font-size: 1.1rem; font-weight: 900; }
+  .balance.owed { color: #b91c1c; }
+  .balance.clear { color: #166534; }
+  .form-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .field { display: grid; gap: 5px; }
+  label { font-size: 0.82rem; font-weight: 700; color: #334155; }
+  input, select, textarea {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    background: #fff;
+  }
+  textarea { min-height: 78px; resize: vertical; }
+  .btn {
+    border: none;
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-weight: 800;
+    cursor: pointer;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    color: #fff;
+  }
+  .btn.warn { background: linear-gradient(90deg, #f97316, #ef4444); }
+  .btn.ghost {
+    background: #eef3ff;
+    color: #1e3a8a;
+    border: 1px solid #c9d7ff;
+  }
+  .list { display: grid; gap: 8px; }
+  .txn {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+  .txn-type { font-weight: 800; }
+  .txn-amt { font-weight: 900; }
+  .txn-amt.charge { color: #b91c1c; }
+  .txn-amt.payment { color: #166534; }
+  .txn-amt.adjustment { color: #1d4ed8; }
+  .empty { color: #64748b; font-style: italic; }
+</style>
+
+<div class="panel" id="overview">
+  <h2>Fee Operations - {{ school.name if school else 'School' }}</h2>
+  {% if not finance_available %}
+    <p class="empty">Finance tables are not available yet. Run schema_finance_ops.sql in Supabase, then reload this page.</p>
+  {% else %}
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Accounts</div>
+        <div class="balance">{{ accounts|length }}</div>
+        <div class="meta">Active student or learner fee ledgers</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Transactions</div>
+        <div class="balance">{{ transactions|length }}</div>
+        <div class="meta">Most recent posted charges, payments, and adjustments</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Reminder Runs</div>
+        <div class="balance">{{ reminder_runs|length }}</div>
+        <div class="meta">Recent fee reminder delivery attempts</div>
+      </div>
+    </div>
+    <div class="grid" style="margin-top: 12px;">
+      <form method="POST" action="{{ url_for('admin_manage_finance', school_id=school_id) }}" class="card">
+        <input type="hidden" name="action" value="send_bulk_reminders">
+        <div class="field">
+          <label>Bulk reminder minimum outstanding amount</label>
+          <input type="text" name="min_balance" value="0.01" placeholder="0.01">
+        </div>
+        <div style="margin-top: 10px;">
+          <button class="btn warn" type="submit">Send Bulk Reminders</button>
+        </div>
+      </form>
+      <form method="POST" action="{{ url_for('admin_manage_finance', school_id=school_id) }}" class="card">
+        <input type="hidden" name="action" value="reconcile_balances">
+        <div class="card-title">Ledger Reconciliation</div>
+        <div class="meta" style="margin-top:6px;">Recompute each account balance from opening balance and all posted transactions.</div>
+        <div style="margin-top: 10px;">
+          <button class="btn ghost" type="submit">Run Reconciliation</button>
+        </div>
+      </form>
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div class="card-title">Export</div>
+          <div class="meta" style="margin-top:6px;">Download all accounts and transactions as a CSV file (Excel-compatible).</div>
+        </div>
+        <div style="margin-top:10px;">
+          <a class="btn" style="text-decoration:none; display:inline-block;" href="{{ url_for('finance_export_csv', school_id=school_id) }}">Download CSV</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+{% if finance_available %}
+<div class="panel" id="accounts">
+  <h2>Create Finance Account</h2>
+  <form method="POST" action="{{ url_for('admin_manage_finance', school_id=school_id) }}">
+    <input type="hidden" name="action" value="create_account">
+    <div class="form-grid">
+      <div class="field">
+        <label>Student/Learner Name</label>
+        <input type="text" name="student_name" required>
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select name="student_role">
+          <option value="learner">Learner</option>
+          <option value="student">Student</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Student User ID (optional)</label>
+        <input type="number" name="student_user_id" min="1">
+      </div>
+      <div class="field">
+        <label>Parent User ID (optional)</label>
+        <input type="number" name="parent_user_id" min="1">
+      </div>
+      <div class="field">
+        <label>Opening Balance</label>
+        <input type="text" name="opening_balance" placeholder="0.00">
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn" type="submit">Create Account</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Post Transaction</h2>
+  <form method="POST" action="{{ url_for('admin_manage_finance', school_id=school_id) }}">
+    <div class="form-grid">
+      <div class="field">
+        <label>Transaction Type</label>
+        <select name="action" required>
+          <option value="post_charge">Charge</option>
+          <option value="post_payment">Payment</option>
+          <option value="post_adjustment">Adjustment</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Account</label>
+        <select name="account_id" required>
+          <option value="">Select account</option>
+          {% for acc in accounts %}
+          <option value="{{ acc.id }}">{{ acc.student_name }} · {{ acc.reference_code }} · E {{ '%.2f'|format((acc.current_balance or 0)|float) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input type="text" name="amount" placeholder="0.00" required>
+      </div>
+      <div class="field">
+        <label>Method</label>
+        <input type="text" name="method" placeholder="cash, momo, stripe, bank">
+      </div>
+      <div class="field">
+        <label>Reference</label>
+        <input type="text" name="reference" placeholder="Receipt/Txn ref">
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>Notes</label>
+        <textarea name="notes"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn" type="submit">Post Transaction</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Account Snapshot</h2>
+  {% if accounts %}
+    <div class="grid">
+      {% for acc in accounts %}
+      {% set bal = acc.current_balance or 0 %}
+      <article class="card">
+        <div class="card-title">{{ acc.student_name or 'Unnamed' }}</div>
+        <div class="meta">{{ acc.reference_code or 'No code' }} · {{ (acc.student_role or 'learner')|title }}</div>
+        <div class="balance {% if bal > 0 %}owed{% else %}clear{% endif %}">
+          E {{ '%.2f'|format(bal|float) }}
+        </div>
+        <form method="POST" action="{{ url_for('admin_manage_finance', school_id=school_id) }}" style="margin-top:10px;">
+          <input type="hidden" name="action" value="send_reminder">
+          <input type="hidden" name="account_id" value="{{ acc.id }}">
+          <button type="submit" class="btn warn">Send Reminder</button>
+        </form>
+      </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">No accounts yet.</p>
+  {% endif %}
+</div>
+
+<div class="panel" id="transactions">
+  <h2>Recent Transactions</h2>
+  {% if transactions %}
+    <div class="list">
+      {% for txn in transactions %}
+      <div class="txn">
+        <div>
+          <div class="txn-type">{{ (txn.txn_type or 'transaction')|title }} · Account #{{ txn.account_id }}</div>
+          <div class="meta">{{ txn.transacted_at[:19] if txn.transacted_at else 'N/A' }} · {{ txn.method or 'manual' }} · {{ txn.reference or 'no reference' }}</div>
+        </div>
+        <div class="txn-amt {{ txn.txn_type or '' }}">E {{ '%.2f'|format((txn.amount or 0)|float) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">No transactions posted yet.</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Reminder Delivery Log</h2>
+  {% if reminder_runs %}
+    <div class="list">
+      {% for run in reminder_runs %}
+      <div class="txn">
+        <div>
+          <div class="txn-type">{{ (run.status or 'sent')|title }} · Account #{{ run.account_id }}</div>
+          <div class="meta">{{ run.created_at[:19] if run.created_at else 'N/A' }} · {{ run.channel or 'email' }}</div>
+        </div>
+        <div class="meta" style="max-width: 320px; text-align:right;">{{ run.message or 'Reminder run' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">No reminder runs yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

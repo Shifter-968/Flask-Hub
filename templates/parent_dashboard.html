@@ -1,7 +1,7 @@
 {% extends "base_dashboard.html" %}
 {% set title = "Parent Dashboard" %}
 {% set role = "Parent" %}
-{% set tabs = ["Announcements", "Events", "Virtual Meetings", "Portal"] %}
+{% set tabs = ["Announcements", "Events", "Fees", "Virtual Meetings", "Portal"] %}
 
 {% block content %}
 <style>
@@ -162,6 +162,38 @@
         font-style: italic;
         padding: 20px;
     }
+    .finance-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+    }
+    .finance-card {
+        background: #ffffff;
+        border: 1px solid #d8def4;
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 8px 18px rgba(30, 41, 59, 0.08);
+    }
+    .finance-name { font-weight: 800; color: #1e3a8a; }
+    .finance-ref { color: #64748b; font-size: 0.8rem; }
+    .finance-bal { margin-top: 8px; font-size: 1.2rem; font-weight: 900; }
+    .finance-bal.owed { color: #b91c1c; }
+    .finance-bal.clear { color: #166534; }
+    .txn-list { margin-top: 12px; display: grid; gap: 8px; }
+    .txn-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px;
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+    }
+    .txn-meta { color: #64748b; font-size: 0.8rem; }
+    .txn-amt { font-weight: 800; }
+    .txn-amt.charge { color: #b91c1c; }
+    .txn-amt.payment { color: #166534; }
     .crystal-button {
         background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3));
         border: 1px solid rgba(255,255,255,0.5);
@@ -240,6 +272,50 @@
                 </div>
             </div>
         </div>
+    </section>
+
+    <section id="fees" class="dashboard-section">
+        <h2 class="section-header">Fees &amp; Balances</h2>
+        {% if not finance_available %}
+            <div class="no-data">Finance module is not enabled yet. Ask your school admin to run the finance schema migration.</div>
+        {% elif finance_accounts %}
+            <div class="finance-grid">
+                {% for acc in finance_accounts %}
+                {% set bal = acc.current_balance or 0 %}
+                <article class="finance-card">
+                    <div class="finance-name">{{ acc.student_name or 'Student Account' }}</div>
+                    <div class="finance-ref">Ref: {{ acc.reference_code or 'N/A' }} · {{ (acc.student_role or 'learner')|title }}</div>
+                    <div class="finance-bal {% if bal > 0 %}owed{% else %}clear{% endif %}">
+                        {% if bal > 0 %}Outstanding{% else %}Up to date{% endif %}: E {{ '%.2f'|format(bal|float) }}
+                    </div>
+                    {% set acc_txns = finance_transactions_by_account.get(acc.id, []) %}
+                    {% if acc_txns %}
+                    <details style="margin-top: 10px;">
+                        <summary style="cursor:pointer; font-size:0.82rem; color:#1e3a8a; font-weight:700;">
+                            {{ acc_txns|length }} transaction{{ 's' if acc_txns|length != 1 else '' }}
+                        </summary>
+                        <div style="margin-top:8px; display:grid; gap:6px;">
+                            {% for txn in acc_txns[:20] %}
+                            <div style="display:flex; justify-content:space-between; font-size:0.82rem; padding:6px 0; border-top:1px solid #e2e8f0;">
+                                <div>
+                                    <strong>{{ (txn.txn_type or 'txn')|title }}</strong>
+                                    {% if txn.reference %} · {{ txn.reference }}{% endif %}
+                                    <div style="color:#64748b;">{{ txn.transacted_at[:10] if txn.transacted_at else 'N/A' }} · {{ txn.method or 'manual' }}</div>
+                                </div>
+                                <div class="txn-amt {% if txn.txn_type == 'charge' %}charge{% elif txn.txn_type == 'payment' %}payment{% endif %}" style="white-space:nowrap;">
+                                    E {{ '%.2f'|format((txn.amount or 0)|float) }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-data">No finance accounts are linked to your profile yet.</div>
+        {% endif %}
     </section>
 
     <section id="portal" class="dashboard-section">

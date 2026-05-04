@@ -29,9 +29,27 @@
     {% endif %}
   {% endwith %}
 
+  {# Screening summary stats #}
+  {% if screening_stats is defined %}
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+    {% set stat_items = [
+      ('recommended', 'Recommended', '#047857', '#ecfdf5', '#a7f3d0'),
+      ('review',       'Needs Review', '#b45309', '#fffbeb', '#fde68a'),
+      ('needs_info',   'Needs Info',   '#b91c1c', '#fef2f2', '#fecaca'),
+      ('unscreened',   'Not Screened', '#475569', '#f8fafc', '#e2e8f0'),
+    ] %}
+    {% for key, label, fg, bg, border in stat_items %}
+    <div style="padding:10px 18px; border-radius:12px; background:{{ bg }}; border:1px solid {{ border }}; display:flex; flex-direction:column; gap:2px; min-width:120px;">
+      <span style="font-size:1.35rem; font-weight:900; color:{{ fg }};">{{ screening_stats.get(key, 0) }}</span>
+      <span style="font-size:0.75rem; font-weight:700; color:{{ fg }}; text-transform:uppercase; letter-spacing:0.05em;">{{ label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {# Status filter tabs #}
-  {% set statuses = [('all','All'),('submitted','Submitted'),('under_review','Under Review'),('missing_docs','Missing Docs'),('accepted','Accepted'),('rejected','Rejected')] %}
-  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px;">
+  {% set statuses = [('all','All'),('submitted','Submitted'),('under_review','Under Review'),('missing_docs','Missing Docs'),('accepted','Accepted'),('rejected','Rejected'),('unscreened','Not Screened')] %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
     {% for val, label in statuses %}
     <a href="{{ url_for('admin_applications', school_id=school.id, status=val) }}"
        style="text-decoration:none; font-size:0.82rem; font-weight:600; padding:7px 16px; border-radius:8px; border:1px solid #e5e7eb;
@@ -40,6 +58,11 @@
     </a>
     {% endfor %}
   </div>
+  <form method="POST" action="{{ url_for('admin_applications_bulk_screen', school_id=school.id) }}" style="margin-bottom:18px;">
+    <button type="submit" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed); color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:0.84rem; font-weight:800; cursor:pointer;">
+      ⚡ Screen All Unscreened Submissions
+    </button>
+  </form>
 
   {# Table #}
   <div style="background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(15,23,42,0.07); overflow:hidden;">
